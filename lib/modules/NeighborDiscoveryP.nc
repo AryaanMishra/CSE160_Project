@@ -1,4 +1,5 @@
 #include <Timer.h> 
+#include "../../includes/channels.h"
 
 generic module NeighborDiscoveryP(){
     provides interface NeighborDiscovery;
@@ -14,7 +15,7 @@ implementation {
     }
 
     task void search(){
-        "logic: send the msg, if somebody responds, save its id inside table."
+        //"logic: send the msg, if somebody responds, save its id inside table."
         call neighborTimer.startOneShot(100+ (call Random.rand16() % 300));
 
     }
@@ -23,5 +24,7 @@ implementation {
         post search();
     }
 
-    command void NeighborDiscovery.printNeighbors();
+    command void NeighborDiscovery.printNeighbors(){
+        dbg(NEIGHBOR_CHANNEL, "NODE %d: HELLO WORLD\n", TOS_NODE_ID);
+    }
 }
