@@ -1,4 +1,4 @@
-generic configuration FloodingC(int channel){
+generic configuration FloodingC(){
     provides interface Flooding;
 }
 

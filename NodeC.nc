@@ -31,7 +31,7 @@ implementation {
     components new NeighborDiscoveryC(AM_PACK);
     Node.Neighbor -> NeighborDiscoveryC;
 
-    components new FloodingC(AM_PACK);
+    components new FloodingC();
     Node.Flooding -> FloodingC;
 
     components CommandHandlerC;
