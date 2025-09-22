@@ -25,6 +25,6 @@ implementation {
     }
 
     command void NeighborDiscovery.printNeighbors(){
-        dbg(NEIGHBOR_CHANNEL, "NODE %d: HELLO WORLD\n", TOS_NODE_ID);
+        dbg(NEIGHBOR_CHANNEL, "HELLO WORLD\n");
     }
 }

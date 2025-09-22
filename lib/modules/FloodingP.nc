@@ -6,6 +6,6 @@ generic module FloodingP(){
 
 implementation{
     command void Flooding.test(){
-        dbg(FLOODING_CHANNEL, "NODE %D: FLOODING WORKING?\n", TOS_NODE_ID);
+        dbg(FLOODING_CHANNEL, "FLOODING WORKING?\n");
     }
 }
