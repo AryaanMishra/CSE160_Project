@@ -24,7 +24,9 @@ module Node{
 
    uses interface CommandHandler;
 
-   uses interface NeighborDiscovery;
+   uses interface NeighborDiscovery as Neighbor;
+
+   uses interface Flooding;
 }
 
 implementation{
@@ -68,7 +70,11 @@ implementation{
       call Sender.send(sendPackage, destination);
    }
 
-   event void CommandHandler.printNeighbors(){}
+   event void CommandHandler.printNeighbors(){
+      dbg(GENERAL_CHANNEL, "HELLO WORLD");
+      call Neighbor.printNeighbors();
+      call Flooding.test();
+   }
 
    event void CommandHandler.printRouteTable(){}
 

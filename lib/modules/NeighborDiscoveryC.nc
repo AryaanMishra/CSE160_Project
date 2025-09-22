@@ -1,19 +1,18 @@
 #include "../../includes/am_types.h"
 
 generic configuration NeighborDiscoveryC(int channel){
-    provides interface;
+    provides interface NeighborDiscovery;
 }
 
 implementation{
     components new NeighborDiscoveryP();
     NeighborDiscovery = NeighborDiscoveryP.NeighborDiscovery;
 
-    components new TimerMillic() as neighborTimer;
+    components new TimerMilliC() as neighborTimer;
     NeighborDiscoveryP.neighborTimer -> neighborTimer;
 
-    components RandomC as random;
-    NeighborDiscoveryP.random -> random;
-
+    components RandomC as Random;
+    NeighborDiscoveryP.Random -> Random;    
 
 }
 
