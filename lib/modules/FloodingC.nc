@@ -5,4 +5,5 @@ generic configuration FloodingC(){
 implementation{
     components new FloodingP();
     Flooding = FloodingP.Flooding;
+
 }

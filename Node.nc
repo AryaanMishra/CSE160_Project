@@ -71,9 +71,7 @@ implementation{
    }
 
    event void CommandHandler.printNeighbors(){
-      dbg(GENERAL_CHANNEL, "HELLO WORLD");
-      call Neighbor.printNeighbors();
-      call Flooding.test();
+      call Neighbor.findNeighbors();
    }
 
    event void CommandHandler.printRouteTable(){}
