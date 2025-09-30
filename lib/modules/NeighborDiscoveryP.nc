@@ -30,12 +30,12 @@ implementation {
 
 // Broadcasts a package from the source node to all neighbors
     void ping(uint16_t destination, uint8_t *payload){
-        makePack(&sendPackage, TOS_NODE_ID, destination, 15, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
         call Sender.send(sendPackage, destination);
     }
 // Sends a reply to the source node
     void pingReply(uint16_t destination, uint8_t *payload){
-        makePack(&sendPackage, TOS_NODE_ID, destination, 15, 1, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
         call Sender.send(sendPackage, destination);
     }
 
@@ -51,7 +51,7 @@ implementation {
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
         if(len==sizeof(pack)){
             pack* myMsg=(pack*) payload;
-            if( myMsg->protocol == 1){
+            if( myMsg->protocol == PROTOCOL_PINGREPLY){
 
                 // dbg(NEIGHBOR_CHANNEL, "Recieved Message From: %d\n", myMsg->src);
 
