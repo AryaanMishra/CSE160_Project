@@ -39,6 +39,7 @@ implementation{
       call AMControl.start();
 
       dbg(GENERAL_CHANNEL, "Booted\n");
+      call Neighbor.findNeighbors();
    }
 
    event void AMControl.startDone(error_t err){
@@ -73,7 +74,7 @@ implementation{
    
 
    event void CommandHandler.printNeighbors(){
-      call Neighbor.findNeighbors();
+      call Neighbor.printNeighbors();
    }
 
    event void CommandHandler.printRouteTable(){}
