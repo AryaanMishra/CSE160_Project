@@ -131,8 +131,10 @@ class TestSim:
 
 def main():
     s = TestSim();
+    s.t = Tossim([])
     s.runTime(10);
-    s.loadTopo("long_line.topo");
+    # Use small topology for easier debugging
+    s.loadTopo("small.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
     s.addChannel(s.COMMAND_CHANNEL);
@@ -140,13 +142,9 @@ def main():
     s.addChannel(s.NEIGHBOR_CHANNEL);
     s.addChannel(s.FLOODING_CHANNEL);
 
+    # Short test: send one ping from node 1 and run a little to observe flooding
     s.runTime(20);
     s.ping(1, 2, "Hello, World");
-    s.runTime(10);
-    s.ping(1, 3, "Hi!");
-    s.runTime(20);
-    s.neighborDMP(1);
-    s.runTime(20);
-    
+    s.runTime(200);
 if __name__ == '__main__':
     main()

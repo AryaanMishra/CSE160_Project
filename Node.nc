@@ -27,13 +27,13 @@ module Node{
    uses interface NeighborDiscovery as Neighbor;
 
    uses interface Flooding;
+
 }
 
 implementation{
    pack sendPackage;
-
-   // Prototypes
-   void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
+   // Prototype (used by other handlers in this module)
+   void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 
    event void Boot.booted(){
       call AMControl.start();
@@ -55,9 +55,11 @@ implementation{
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
       dbg(GENERAL_CHANNEL, "Packet Received\n");
       if(len==sizeof(pack)){
-         pack* myMsg=(pack*) payload;
-         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
-         return msg;
+       pack* myMsg=(pack*) payload;
+       dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
+       // Delegate flooding/forwarding handling to Flooding component
+       // FloodingP provides a Receive interface and will be wired to the same AM receiver; Node need not handle forwarding here.
+       return msg;
       }
       dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
       return msg;
@@ -67,13 +69,12 @@ implementation{
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
       dbg(GENERAL_CHANNEL, "PING EVENT \n");
       makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-      call Sender.send(sendPackage, destination);
+      call Flooding.flood(sendPackage,AM_BROADCAST_ADDR);
    }
 
    event void CommandHandler.printNeighbors(){
-      dbg(GENERAL_CHANNEL, "HELLO WORLD");
+      //dbg(GENERAL_CHANNEL, "HELLO WORLD");
       call Neighbor.printNeighbors();
-      call Flooding.test();
    }
 
    event void CommandHandler.printRouteTable(){}
