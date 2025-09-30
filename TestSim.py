@@ -137,10 +137,10 @@ def main():
     s.loadTopo("small.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
-    s.addChannel(s.COMMAND_CHANNEL);
-    s.addChannel(s.GENERAL_CHANNEL);
+    # s.addChannel(s.COMMAND_CHANNEL);
+    # s.addChannel(s.GENERAL_CHANNEL);
     s.addChannel(s.NEIGHBOR_CHANNEL);
-    s.addChannel(s.FLOODING_CHANNEL);
+    # s.addChannel(s.FLOODING_CHANNEL);
 
     # Short test: send one ping from node 1 and run a little to observe flooding
     s.runTime(20);
