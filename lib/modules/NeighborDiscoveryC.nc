@@ -1,4 +1,5 @@
 #include "../../includes/am_types.h"
+#include "../../includes/neighborTable.h"
 
 generic configuration NeighborDiscoveryC(int channel){
     provides interface NeighborDiscovery;
@@ -9,6 +10,7 @@ implementation{
     NeighborDiscovery = NeighborDiscoveryP.NeighborDiscovery;
 
     components new AMReceiverC(AM_PACK) as GeneralReceive;
+     NeighborDiscoveryP.Receive -> GeneralReceive;
 
     components new TimerMilliC() as neighborTimer;
     NeighborDiscoveryP.neighborTimer -> neighborTimer;
@@ -19,6 +21,9 @@ implementation{
     components new SimpleSendC(AM_PACK);
     NeighborDiscoveryP.Sender -> SimpleSendC;
 
-    NeighborDiscoveryP.Receive -> GeneralReceive;
+    components new HashmapC(table, 20);
+    NeighborDiscoveryP.Hashmap -> HashmapC;
+
+
 }
 
