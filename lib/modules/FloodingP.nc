@@ -20,6 +20,7 @@ generic module FloodingP(){
     uses interface Receive;
     uses interface SimpleSend as Sender;
     uses interface Random;
+    uses interface Timer<TMilli> as activeTimer;
 }
 
 implementation{
@@ -30,7 +31,7 @@ implementation{
         uint16_t maxSeq;
         bool used;
     } seqEntry_t;
-
+    uint32_t seq = 0;
     seqEntry_t seqCache[MAX_NODES];
 
     // searches the cache: If it finds an entry with nodeId == node, it returns its index ifnot it returns the first free slot index
@@ -38,37 +39,65 @@ implementation{
         int freeIdx = -1;
         int i;
         for(i=0;i<MAX_NODES;i++){
-            if(seqCache[i].used && seqCache[i].nodeId == node) return i;
-            if(!seqCache[i].used && freeIdx==-1) freeIdx = i;
+            if(seqCache[i].used && seqCache[i].nodeId == node){
+                return i;
+            }
+            if(!seqCache[i].used){
+                freeIdx = i;
+                break;
+            } 
         }
         return freeIdx; // may be -1 if full
     }
 
-    // counter used when this node originates (creates) a flood. Each new flood from this node gets a unique increasing seq
-    static uint16_t localSeq = 1;
 
     command void Flooding.flood(pack msg, uint16_t dest){
-
+        // declare locals first (C89 requirement)
         error_t err;
+
         // If the packet was created on this node, the module assigns it a sequence number which makes new packets unique.
         if(msg.src == TOS_NODE_ID){
-            msg.seq = localSeq++;
+            seq++;
+            msg.seq = seq;
         }
 
         // Set initial TTL if not set or zero
         if(msg.TTL == 0) msg.TTL = MAX_TTL;
 
-        //  dest is typically AM_BROADCAST_ADDR for a broadcast, or a specific node id if you wanted to limit. (hop-by-hop link layer will use dest)
+        // dest is typically AM_BROADCAST_ADDR for a broadcast, or a specific node id if you wanted to limit. (hop-by-hop link layer will use dest)
         err = call Sender.send(msg, dest);
         if(err != SUCCESS){
             dbg(FLOODING_CHANNEL, "Send failed: %d\n", err);
         } else {
             dbg(FLOODING_CHANNEL, "Sent flood from %hu seq %hu to %hu (TTL=%hhu)\n", msg.src, msg.seq, dest, msg.TTL);
         }
+
+        // Start a short timer to print active nodes after flooding spreads
+        call activeTimer.startPeriodic(200);
+    }
+
+    // Timer fired: evaluate and print active nodes
+    event void activeTimer.fired(){
+        // determine global max seq across origins
+        int i;
+
+        // threshold for active neighbor
+        const uint16_t THRESH = 5;
+
+        dbg(FLOODING_CHANNEL, "Active nodes (within %u of global max %u):\n", THRESH, seq);
+        for(i=0;i<MAX_NODES;i++){
+            if(seqCache[i].used){
+                uint16_t diff = seq - seqCache[i].maxSeq;
+                if(diff <= THRESH){
+                    dbg(FLOODING_CHANNEL, "  Node %hu (maxSeq=%hu, diff=%hu)\n", seqCache[i].nodeId, seqCache[i].maxSeq, diff);
+                }
+            }
+        }
     }
 
     // When a packet is received, decide whether to rebroadcast
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
+        // declare locals first (C89)
         pack* p;
         int idx;
         error_t err;
@@ -130,7 +159,6 @@ implementation{
     command void Flooding.printCache(){
         int i;
         dbg(FLOODING_CHANNEL, "Flood cache:\n");
-        
         for(i=0;i<MAX_NODES;i++){
             if(seqCache[i].used){
                 dbg(FLOODING_CHANNEL, "Node %hu -> maxSeq %hu\n", seqCache[i].nodeId, seqCache[i].maxSeq);
@@ -141,7 +169,5 @@ implementation{
     command void Flooding.test(){
         dbg(FLOODING_CHANNEL, "FLOODING WORKING?\n");
     }
-
-    
 
 }
