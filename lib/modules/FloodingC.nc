@@ -19,7 +19,7 @@ implementation{
     FloodingP.Random -> Random;
 
     
-    components new HashmapC(floodTable, 20);
+    components new HashmapC(uint16_t, 20);
     FloodingP.Hashmap -> HashmapC;
 
 }

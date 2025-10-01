@@ -140,10 +140,10 @@ def main():
     # s.addChannel(s.GENERAL_CHANNEL);
     #s.addChannel(s.NEIGHBOR_CHANNEL);
     s.addChannel(s.FLOODING_CHANNEL);
-    s.runTime(1000);
+    s.runTime(100);
     # s.runTime(20);
     s.ping(1, 2, "Hello, World");
-    # s.runTime(10);
+    s.runTime(1000);
     # s.ping(1, 3, "Hi!");
     # while(True):
     #     i = 0
