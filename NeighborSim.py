@@ -1,8 +1,3 @@
-#ANDES Lab - University of California, Merced
-#Author: UCM ANDES Lab
-#$Author: abeltran2 $
-#$LastChangedDate: 2014-08-31 16:06:26 -0700 (Sun, 31 Aug 2014) $
-#! /usr/bin/python
 import sys
 from TOSSIM import *
 from CommandMsg import *
@@ -136,20 +131,15 @@ def main():
     s.loadTopo("example.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
-    # s.addChannel(s.COMMAND_CHANNEL);
-    # s.addChannel(s.GENERAL_CHANNEL);
-    s.addChannel(s.NEIGHBOR_CHANNEL);
-    # s.addChannel(s.FLOODING_CHANNEL);
 
-    # s.runTime(20);
-    # s.ping(1, 2, "Hello, World");
-    # s.runTime(10);
-    # s.ping(1, 3, "Hi!");
+    s.addChannel(s.NEIGHBOR_CHANNEL);
+
     while(True):
         i = 0
         for i in s.moteids:
             s.runTime(5);
             s.neighborDMP(i);
         s.runTime(100);
+
 if __name__ == '__main__':
     main()

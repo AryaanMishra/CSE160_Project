@@ -4,6 +4,7 @@
 #include "../../includes/CommandMsg.h"
 #include "../../includes/sendInfo.h"
 #include "../../includes/neighborTable.h"
+#include "../../includes/protocol.h"
 
 
 generic module NeighborDiscoveryP(){
@@ -18,7 +19,7 @@ generic module NeighborDiscoveryP(){
 
 implementation {
     pack sendPackage;
-    int sequenceNum = 0;
+    uint32_t sequenceNum = 0;
     table t;
 
     void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
@@ -30,12 +31,12 @@ implementation {
 
 // Broadcasts a package from the source node to all neighbors
     void ping(uint16_t destination, uint8_t *payload){
-        makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
         call Sender.send(sendPackage, destination);
     }
 // Sends a reply to the source node
     void pingReply(uint16_t destination, uint8_t *payload){
-        makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PINGREPLY, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PINGREPLY, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
         call Sender.send(sendPackage, destination);
     }
 
