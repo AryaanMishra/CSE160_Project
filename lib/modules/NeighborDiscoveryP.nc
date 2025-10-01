@@ -60,7 +60,7 @@ implementation {
                 t.isActive = TRUE;
                 call Hashmap.insert(myMsg->src, t);
             }
-            else{
+            else if (myMsg->protocol == PROTOCOL_PING){
                 pingReply(myMsg->src, "pack");
             }
 

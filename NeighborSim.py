@@ -131,9 +131,8 @@ def main():
     s.loadTopo("example.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
-
+    s.runTime(50);
     s.addChannel(s.NEIGHBOR_CHANNEL);
-
     while(True):
         i = 0
         for i in s.moteids:

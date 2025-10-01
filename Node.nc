@@ -39,7 +39,7 @@ implementation{
       call AMControl.start();
 
       dbg(GENERAL_CHANNEL, "Booted\n");
-      //call Neighbor.findNeighbors();
+      call Neighbor.findNeighbors();
       makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, 0, 0, 0, "hello", PACKET_MAX_PAYLOAD_SIZE);
    }
 
