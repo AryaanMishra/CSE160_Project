@@ -50,7 +50,7 @@ implementation{
                     }
                 }
                 else{
-                    call Hashmap.insert(myMsg->src, sequenceNum);
+                    call Hashmap.insert(myMsg->src, myMsg->seq);
                     call Sender.send(*myMsg, AM_BROADCAST_ADDR);
                     dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                 }
