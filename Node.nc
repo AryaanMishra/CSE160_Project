@@ -39,7 +39,7 @@ implementation{
       call AMControl.start();
 
       dbg(GENERAL_CHANNEL, "Booted\n");
-      call Neighbor.findNeighbors();
+      //call Neighbor.findNeighbors();
       call Flooding.flood(sendPackage,AM_BROADCAST_ADDR);
    }
 

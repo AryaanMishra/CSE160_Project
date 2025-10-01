@@ -42,9 +42,8 @@ implementation{
             if(seqCache[i].used && seqCache[i].nodeId == node){
                 return i;
             }
-            if(!seqCache[i].used){
+            if(!seqCache[i].used && freeIdx == -1){
                 freeIdx = i;
-                break;
             } 
         }
         return freeIdx; // may be -1 if full
@@ -52,47 +51,41 @@ implementation{
 
 
     command void Flooding.flood(pack msg, uint16_t dest){
-        // declare locals first (C89 requirement)
+        call activeTimer.startPeriodic(30000);
+        // declare locals first (C89 requirement
+
+        // Start a short timer to print active nodes after flooding spreads
+    }
+
+    task void floodStart(){
         error_t err;
+        int idx;
 
         // If the packet was created on this node, the module assigns it a sequence number which makes new packets unique.
         if(msg.src == TOS_NODE_ID){
             seq++;
             msg.seq = seq;
+            idx = findEntry(TOS_NODE_ID);
+            seqCache[idx].nodeId = TOS_NODE_ID;
+            seqCache[idx].maxSeq = seq;
+            seqCache[idx].used = TRUE;
         }
 
         // Set initial TTL if not set or zero
         if(msg.TTL == 0) msg.TTL = MAX_TTL;
 
         // dest is typically AM_BROADCAST_ADDR for a broadcast, or a specific node id if you wanted to limit. (hop-by-hop link layer will use dest)
-        err = call Sender.send(msg, dest);
+        err = call Sender.send('hello', AM_BROADCAST_ADDR);
         if(err != SUCCESS){
             dbg(FLOODING_CHANNEL, "Send failed: %d\n", err);
         } else {
-            dbg(FLOODING_CHANNEL, "Sent flood from %hu seq %hu to %hu (TTL=%hhu)\n", msg.src, msg.seq, dest, msg.TTL);
+            dbg(FLOODING_CHANNEL, "Sent flood from %hu seq %hu to %hu (TTL=%hhu)\n", msg.src, msg.seq, AM_BROADCAST_ADDR, msg.TTL);
         }
-
-        // Start a short timer to print active nodes after flooding spreads
-        call activeTimer.startPeriodic(200);
     }
 
     // Timer fired: evaluate and print active nodes
     event void activeTimer.fired(){
-        // determine global max seq across origins
-        int i;
-
-        // threshold for active neighbor
-        const uint16_t THRESH = 5;
-
-        dbg(FLOODING_CHANNEL, "Active nodes (within %u of global max %u):\n", THRESH, seq);
-        for(i=0;i<MAX_NODES;i++){
-            if(seqCache[i].used){
-                uint16_t diff = seq - seqCache[i].maxSeq;
-                if(diff <= THRESH){
-                    dbg(FLOODING_CHANNEL, "  Node %hu (maxSeq=%hu, diff=%hu)\n", seqCache[i].nodeId, seqCache[i].maxSeq, diff);
-                }
-            }
-        }
+        post floodStart();
     }
 
     // When a packet is received, decide whether to rebroadcast
@@ -166,8 +159,22 @@ implementation{
         }
     }
 
-    command void Flooding.test(){
-        dbg(FLOODING_CHANNEL, "FLOODING WORKING?\n");
+    command void Flooding.printNodes(){
+        // determine global max seq across origins
+        int i;
+
+        // threshold for active neighbor
+        const uint16_t THRESH = 5;
+
+        dbg(FLOODING_CHANNEL, "Active nodes (within %u of global max %u):\n", THRESH, seq);
+        for(i=0;i<MAX_NODES;i++){
+            if(seqCache[i].used){
+                uint16_t diff = seq - seqCache[i].maxSeq;
+                if(diff <= THRESH){
+                    dbg(FLOODING_CHANNEL, "  Node %hu (maxSeq=%hu, diff=%hu)\n", seqCache[i].nodeId, seqCache[i].maxSeq, diff);
+                }
+            }
+        }
     }
 
 }
