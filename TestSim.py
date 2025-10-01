@@ -133,7 +133,7 @@ def main():
     s = TestSim();
     s.t = Tossim([])
     s.runTime(10);
-    s.loadTopo("example.topo");
+    s.loadTopo("long_line.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
     # s.addChannel(s.COMMAND_CHANNEL);

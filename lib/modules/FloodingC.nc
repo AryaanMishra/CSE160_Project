@@ -18,7 +18,8 @@ implementation{
     components RandomC as Random;
     FloodingP.Random -> Random;
 
-    components new TimerMilliC() as activeTimer;
-    FloodingP.activeTimer -> activeTimer;
+    
+    components new HashmapC(floodTable, 20);
+    FloodingP.Hashmap -> HashmapC;
 
 }
