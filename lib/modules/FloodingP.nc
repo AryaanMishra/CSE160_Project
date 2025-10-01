@@ -34,6 +34,8 @@ implementation{
     uint32_t seq = 0;
     seqEntry_t seqCache[MAX_NODES];
 
+    pack storedMsg;
+
     // searches the cache: If it finds an entry with nodeId == node, it returns its index ifnot it returns the first free slot index
     int findEntry(uint16_t node){
         int freeIdx = -1;
@@ -50,17 +52,17 @@ implementation{
     }
 
 
-    command void Flooding.flood(pack msg, uint16_t dest){
-        call activeTimer.startPeriodic(30000);
+    command void Flooding.flood(pack package){
+        storedMsg = package;
+        call activeTimer.startPeriodic(3000000);
         // declare locals first (C89 requirement
-
         // Start a short timer to print active nodes after flooding spreads
     }
 
     task void floodStart(){
         error_t err;
         int idx;
-
+        pack msg = storedMsg;
         // If the packet was created on this node, the module assigns it a sequence number which makes new packets unique.
         if(msg.src == TOS_NODE_ID){
             seq++;
@@ -75,7 +77,7 @@ implementation{
         if(msg.TTL == 0) msg.TTL = MAX_TTL;
 
         // dest is typically AM_BROADCAST_ADDR for a broadcast, or a specific node id if you wanted to limit. (hop-by-hop link layer will use dest)
-        err = call Sender.send('hello', AM_BROADCAST_ADDR);
+        err = call Sender.send(msg, AM_BROADCAST_ADDR);
         if(err != SUCCESS){
             dbg(FLOODING_CHANNEL, "Send failed: %d\n", err);
         } else {
@@ -96,7 +98,7 @@ implementation{
         error_t err;
         pack out;
 
-        dbg(FLOODING_CHANNEL, "Packet Received\n");
+        //dbg(FLOODING_CHANNEL, "Packet Received\n");
         if(len != sizeof(pack)){
             dbg(FLOODING_CHANNEL, "Unknown Packet Type %d\n", len);
             return msg;
@@ -114,7 +116,7 @@ implementation{
                 return msg;
             }
             // new sequence, update
-            seqCache[idx].maxSeq = p->seq;
+        seqCache[idx].maxSeq = p->seq;
         } else if(idx >= 0){
             // insert new entry
             seqCache[idx].used = TRUE;
@@ -141,7 +143,7 @@ implementation{
                 if(err != SUCCESS){
                     dbg(FLOODING_CHANNEL, "Rebroadcast failed: %d\n", err);
                 } else {
-                    dbg(FLOODING_CHANNEL, "Rebroadcasted packet from %hu seq %hu (new TTL=%hhu)\n", out.src, out.seq, out.TTL);
+                    dbg(FLOODING_CHANNEL, "NODE %d: Rebroadcasted packet from %hu seq %hu (new TTL=%hhu)\n", TOS_NODE_ID, out.src, out.seq, out.TTL);
                 }
             }
         }
@@ -176,5 +178,4 @@ implementation{
             }
         }
     }
-
 }
