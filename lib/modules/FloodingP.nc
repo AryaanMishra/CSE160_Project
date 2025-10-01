@@ -39,9 +39,9 @@ implementation{
             }
             else{
                 if(call Hashmap.contains(myMsg->src)){
-                    if(call Hashmap.get(myMsg->src) < sequenceNum){
-                        call Hashmap.insert(myMsg->src, sequenceNum);
-                        dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE\n", TOS_NODE_ID);
+                    if(call Hashmap.get(myMsg->src) < myMsg->seq){
+                        call Hashmap.insert(myMsg->src, myMsg->seq);
+                        dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                         call Sender.send(*myMsg, AM_BROADCAST_ADDR);
                     }
                     else{
@@ -52,7 +52,7 @@ implementation{
                 else{
                     call Hashmap.insert(myMsg->src, sequenceNum);
                     call Sender.send(*myMsg, AM_BROADCAST_ADDR);
-                    dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE\n", TOS_NODE_ID);
+                    dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                 }
             }
 
