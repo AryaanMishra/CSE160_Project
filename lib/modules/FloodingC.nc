@@ -1,3 +1,6 @@
+#include "../../includes/am_types.h"
+
+
 generic configuration FloodingC(){
     provides interface Flooding;
 }
@@ -5,4 +8,18 @@ generic configuration FloodingC(){
 implementation{
     components new FloodingP();
     Flooding = FloodingP.Flooding;
+
+    components new AMReceiverC(AM_PACK) as GeneralReceive;
+    FloodingP.Receive -> GeneralReceive;
+
+    components new SimpleSendC(AM_PACK);
+    FloodingP.Sender -> SimpleSendC;
+
+    components RandomC as Random;
+    FloodingP.Random -> Random;
+
+    
+    components new HashmapC(uint16_t, 20);
+    FloodingP.Hashmap -> HashmapC;
+
 }

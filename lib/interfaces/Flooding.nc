@@ -1,3 +1,3 @@
 interface Flooding{
-    command void test();
+    command void flood();
 }
