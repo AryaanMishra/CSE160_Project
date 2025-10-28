@@ -8,6 +8,8 @@
 
 generic module LinkStateP(){
     provides interface LinkState;
+
+    uses interface Hashmap<table>;
 }
 
 implementation{
