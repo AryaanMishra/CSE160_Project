@@ -12,17 +12,16 @@ generic module NeighborDiscoveryP(){
 
     uses interface Timer<TMilli> as neighborTimer;
     uses interface Random;
-    uses interface Receive;
     uses interface SimpleSend as Sender;
     uses interface Hashmap<table>;
 }
 
 implementation {
-    pack sendPackage;
+    default_pack sendPackage;
     uint32_t sequenceNum = 0;
     table t;
 
-    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
+    void makePack(default_pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
@@ -32,12 +31,12 @@ implementation {
 // Broadcasts a package from the source node to all neighbors
     void ping(uint16_t destination, uint8_t *payload){
         makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
-        call Sender.send(sendPackage, destination);
+        call Sender.send(*(pack*)&sendPackage, destination);
     }
 // Sends a reply to the source node
     void pingReply(uint16_t destination, uint8_t *payload){
         makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PINGREPLY, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
-        call Sender.send(sendPackage, destination);
+        call Sender.send(*(pack*)&sendPackage, destination);
     }
 
 //When the task is posted it will send a package to all enighbors
@@ -49,9 +48,9 @@ implementation {
 // Main functionality: When a node recieves a package, if it recieved a ping is will return a ping reply, otherwise it will hash the 
 //neighbor node with the node id as the key, and the monotonically increasing times that this neighbor has responded to pings. The node is set to active.
 
-    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
+    command message_t* NeighborDiscovery.neighborReceive(message_t* msg, void* payload, uint8_t len){
         if(len==sizeof(pack)){
-            pack* myMsg=(pack*) payload;
+            default_pack* myMsg=(default_pack*) payload;
             if( myMsg->protocol == PROTOCOL_PINGREPLY){
 
                 // dbg(NEIGHBOR_CHANNEL, "Recieved Message From: %d\n", myMsg->src);
@@ -94,7 +93,7 @@ implementation {
     }
 
 
-    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
+    void makePack(default_pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
         Package->src = src;
         Package->dest = dest;
         Package->TTL = TTL;

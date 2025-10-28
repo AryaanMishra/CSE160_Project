@@ -9,8 +9,6 @@ implementation{
     components new NeighborDiscoveryP();
     NeighborDiscovery = NeighborDiscoveryP.NeighborDiscovery;
 
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
-     NeighborDiscoveryP.Receive -> GeneralReceive;
 
     components new TimerMilliC() as neighborTimer;
     NeighborDiscoveryP.neighborTimer -> neighborTimer;

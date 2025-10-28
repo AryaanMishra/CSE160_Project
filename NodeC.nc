@@ -16,11 +16,9 @@ configuration NodeC{
 implementation {
     components MainC;
     components Node;
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
 
     Node -> MainC.Boot;
 
-    Node.Receive -> GeneralReceive;
 
     components ActiveMessageC;
     Node.AMControl -> ActiveMessageC;
@@ -36,5 +34,8 @@ implementation {
 
     components CommandHandlerC;
     Node.CommandHandler -> CommandHandlerC;
+
+    components new LinkLayerC();
+    Node.LinkLayer -> LinkLayerC;
 
 }

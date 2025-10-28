@@ -9,9 +9,6 @@ implementation{
     components new FloodingP();
     Flooding = FloodingP.Flooding;
 
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
-    FloodingP.Receive -> GeneralReceive;
-
     components new SimpleSendC(AM_PACK);
     FloodingP.Sender -> SimpleSendC;
 
