@@ -29,12 +29,12 @@ implementation{
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
         //dbg(GENERAL_CHANNEL, "Packet Received\n");
         if(len==sizeof(pack)){
-            default_pack* myMsg=(default_pack*) payload;
-            dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
-            if(myMsg->protocol == PROTOCOL_PING || myMsg->protocol == PROTOCOL_PINGREPLY){
+            ll_header* ll = (ll_header*)payload;
+            //dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
+            if(ll->protocol == PROTOCOL_PING || ll->protocol == PROTOCOL_PINGREPLY){
                 call ND.neighborReceive(msg, payload, len);
             }
-            else if(myMsg->protocol == PROTOCOL_FLOODING){
+            else if(ll->protocol == PROTOCOL_FLOODING){
                 call Flood.floodReceive(msg, payload, len);
             }
 

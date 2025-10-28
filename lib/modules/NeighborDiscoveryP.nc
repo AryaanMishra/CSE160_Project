@@ -5,6 +5,8 @@
 #include "../../includes/sendInfo.h"
 #include "../../includes/neighborTable.h"
 #include "../../includes/protocol.h"
+#include "../../includes/ll_header.h"
+#include "../../includes/nd_header.h"
 
 
 generic module NeighborDiscoveryP(){
@@ -18,12 +20,9 @@ generic module NeighborDiscoveryP(){
 }
 
 implementation {
-    default_pack sendPackage;
     uint32_t sequenceNum = 0;
-    uint8_t buffer[28];
     table t;
 
-    void makePack(default_pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
@@ -32,13 +31,19 @@ implementation {
 
 // Broadcasts a package from the source node to all neighbors
     void ping(uint16_t destination, uint8_t *payload){
-        makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
-        call Sender.send(*(pack*)&sendPackage, destination);
+        uint8_t buffer[28];
+        nd_header* nd = (nd_header*)call LinkLayer.buildLLHeader(PROTOCOL_PING, buffer, destination);
+        nd->protocol = PROTOCOL_PING;
+        nd->seq = sequenceNum;
+        call Sender.send(*(pack*)&buffer, destination);
     }
 // Sends a reply to the source node
     void pingReply(uint16_t destination, uint8_t *payload){
-        makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PINGREPLY, sequenceNum, payload, PACKET_MAX_PAYLOAD_SIZE);
-        call Sender.send(*(pack*)&sendPackage, destination);
+        uint8_t buffer[28];
+        nd_header* nd = (nd_header*)call LinkLayer.buildLLHeader(PROTOCOL_PINGREPLY, buffer, destination);
+        nd->protocol = PROTOCOL_PINGREPLY;
+        nd->seq = sequenceNum;
+        call Sender.send(*(pack*)&buffer, destination);
     }
 
 //When the task is posted it will send a package to all enighbors
@@ -52,17 +57,23 @@ implementation {
 
     command message_t* NeighborDiscovery.neighborReceive(message_t* msg, void* payload, uint8_t len){
         if(len==sizeof(pack)){
-            default_pack* myMsg=(default_pack*) payload;
-            if( myMsg->protocol == PROTOCOL_PINGREPLY){
+            ll_header* ll = (ll_header*)payload;
+            nd_header* nd = (nd_header*)ll->payload;
+            if(nd->protocol == PROTOCOL_PINGREPLY){
+                //dbg(NEIGHBOR_CHANNEL, "Received PINGREPLY from Node %d\n", ll->src);
 
-                // dbg(NEIGHBOR_CHANNEL, "Recieved Message From: %d\n", myMsg->src);
-
-                t.seq = (call Hashmap.get(myMsg->src)).seq + 1;
+                if(call Hashmap.contains(ll->src)){
+                    t.seq = (call Hashmap.get(ll->src)).seq + 1;
+                } else{
+                    t.seq = 1;
+                }
                 t.isActive = TRUE;
-                call Hashmap.insert(myMsg->src, t);
+                call Hashmap.insert(ll->src, t);
+
             }
-            else if (myMsg->protocol == PROTOCOL_PING){
-                pingReply(myMsg->src, "pack");
+            else if (nd->protocol == PROTOCOL_PING){
+                //dbg(NEIGHBOR_CHANNEL, "Received PING from Node %d, sending reply\n", ll->src);
+                pingReply(ll->src, "pack");  // Reply to the sender, not broadcast
             }
 
             return msg;
@@ -95,14 +106,6 @@ implementation {
     }
 
 
-    void makePack(default_pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
-        Package->src = src;
-        Package->dest = dest;
-        Package->TTL = TTL;
-        Package->seq = seq;
-        Package->protocol = protocol;
-        memcpy(Package->payload, payload, length);
-   }
 
 //Prints the nodes neighbor and the integrity of the connection
     command void NeighborDiscovery.printNeighbors(){
@@ -122,6 +125,10 @@ implementation {
                 dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d%%\n", keys[j], integrity);
             }
         }
+    }
+
+    command Hashmap getNeighborTable(){
+        return Hashmap;
     }
 
 }
