@@ -28,6 +28,9 @@ implementation{
             message_t *raw_msg;
             void *payload;
 
+	    char * string;
+    	    char * start;
+
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();
             payload = call Packet.getPayload(raw_msg, sizeof(CommandMsg));
@@ -96,6 +99,17 @@ implementation{
 
             case CMD_WHISPER:
                 dbg(COMMAND_CHANNEL, "Command Type: Whispering\n");
+		dbg(COMMAND_CHANNEL, "I'm here %s\n",&buff[0]);
+		
+		 string = &buff[0];
+                 start = strtok(string," \t");
+                 dbg(COMMAND_CHANNEL, "I'm here %s\n",start);
+		 strcpy(&buff[0], start);
+	 	 start = strtok(NULL," \t");
+		 
+
+                dbg(COMMAND_CHANNEL, "I'm here %s\n",&buff[0]);
+	
                 signal CommandHandler.whisper(&buff[0],&buff[1]);
                 break;
 

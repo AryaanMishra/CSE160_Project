@@ -1,25 +1,24 @@
-#include "../../includes/am_types.h"
+// Configuration
+#define AM_FLOODING 79
 
-
-generic configuration FloodingC(){
-    provides interface Flooding;
+configuration FloodingC{
+	provides interface SimpleSend;
+	provides interface Receive as MainReceive;
+	provides interface Receive as ReplyReceive;
 }
 
 implementation{
-    components new FloodingP();
-    Flooding = FloodingP.Flooding;
-
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
-    FloodingP.Receive -> GeneralReceive;
-
-    components new SimpleSendC(AM_PACK);
-    FloodingP.Sender -> SimpleSendC;
-
-    components RandomC as Random;
-    FloodingP.Random -> Random;
-
-    
-    components new HashmapC(uint16_t, 20);
-    FloodingP.Hashmap -> HashmapC;
-
+	components FloodingP;
+	components new SimpleSendC(AM_FLOODING);
+	components new AMReceiverC(AM_FLOODING);
+	
+	// Wire Internal Components
+	FloodingP.InternalSender -> SimpleSendC;
+	FloodingP.InternalReceiver -> AMReceiverC;
+	
+	// Provide External Interfaces.
+	MainReceive = FloodingP.MainReceive;
+	ReplyReceive = FloodingP.ReplyReceive;
+	SimpleSend = FloodingP.FloodSender;
 }
+

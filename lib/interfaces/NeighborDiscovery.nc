@@ -1,5 +1,6 @@
-interface NeighborDiscovery {
-    command void findNeighbors();
-    command void printNeighbors();
-    
+// Custom Interface
+Interface NeighborDiscovery{
+	command void start();
+	command void print();
 }
+

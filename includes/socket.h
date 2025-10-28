@@ -14,6 +14,11 @@ enum socket_state{
     ESTABLISHED,
     SYN_SENT,
     SYN_RCVD,
+    FIN_WAIT_1,
+    CLOSE_WAIT,
+    FIN_WAIT_2,
+    LAST_ACK,
+    TIME_WAIT,
 };
 
 
@@ -30,11 +35,11 @@ typedef nx_struct socket_addr_t{
 // File descripter id. Each id is associated with a socket_store_t
 typedef uint8_t socket_t;
 
-// State of a socket. 
+// State of a socket.
 typedef struct socket_store_t{
     uint8_t flag;
     enum socket_state state;
-    socket_port_t src;
+    socket_addr_t src;
     socket_addr_t dest;
 
     // This is the sender portion.

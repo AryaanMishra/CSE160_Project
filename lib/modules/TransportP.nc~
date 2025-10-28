@@ -1,0 +1,201 @@
+//TransportP Defines transport fcns
+
+#include "../../includes/socket.h"
+
+module TransportP {
+   provides interface Transport;
+
+   uses interface Hashmap<socket_t*> as sMap;
+
+   uses interface SimpleSend as TransportSender;
+}
+
+implementation {
+/**   socket_t socket();
+*    error_t bind(socket_t fd, socket_addr_t *addr);
+*    socket_t accept(socket_t fd);
+*    uint16_t write(socket_t fd, uint8_t *buff, uint16_t bufflen);
+*    error_t receive(pack* package);
+*    uint16_t read(socket_t fd, uint8_t *buff, uint16_t bufflen);
+*    error_t connect(socket_t fd, socket_addr_t * addr);
+*    error_t close(socket_t fd);
+*    error_t release(socket_t fd);
+*   error_t listen(socket_t fd);
+*/
+
+
+   socket_store_t socket;
+
+   command socket_t Transport.socket(){
+      int x = 0;
+
+      dbg(TRANSPORT_CHANNEL, "Reached socket()\n");
+
+      socket.flag = 0;
+      socket.state = CLOSED;
+      socket.src = 0;
+      socket.dest = 0;
+      socket.lastWritten = 0;
+      socket.lastAck = 0;
+      socket.lastSent = 0;
+      for (x = 0; x < SOCKET_BUFFER_SIZE; x++){
+         socket.rcvdBuff[x] = 0;
+         socket.sendBuff[x] = 0;
+      }
+      socket.lastRead = 0;
+      socket.lastRcvd = 0;
+      socket.nextExpected = 0;
+      socket.RTT = 0;
+      socket.effectiveWindow = 0;
+
+      call sMap.insert(fd, socket);
+
+      return fd;
+   }
+
+   command error_t Transport.bind(socket_t fd, socket_addr_t *addr) {
+      dbg(TRANSPORT_CHANNEL, "Binding\n");
+      socket.src.port = addr->port;
+      socket.src.addr = addr->addr;
+//      fd.state = LISTEN;
+
+      call sMap.insert(fd, socket);	//might need a get
+   }
+
+   command socket_t Transport.accept(socket_t fd) {	//check
+      dbg(TRANSPORT_CHANNEL, "Accepted\n");
+
+      //Places scoket in a List of unused sockets
+      call sMap.insert(fd, socket);
+      return fd;
+   }
+/**
+*   command uint16_t Transport.write(socket_t fd, uint8_t *buff, uint16_t bufflen) {
+*      int x, a = 0;
+*      int writeLN = 0;
+*
+*      dbg(TRANSPORT_CHANNEL, "Writing\n");
+*
+*      socket = call sMap.get(fd);
+*
+*      if (a != 1) {
+*         dbg(TRANSPORT_CHANNEL, "Shit broke yo\n Error in write list\n");
+*         return 0;      //ERROR
+*      }
+*      else if (socket.lastAck <= socket.lastWritten) {
+*	 dbg(TRANSPORT_CHANNEL, "Something to write\n"); //Loops around in buffer
+*	 writeLN = (SOCKET_BUFFER_SIZE - socket.lastWritten + socket.lastAck);
+*      }
+*      else {
+*	 //Doesn't loop around still has buffer to fill
+*	 writeLN = socket.lastAck - socket.lastWritten;
+*      }
+*
+*      if (bufflen > writeLN) {
+*	 //For when have writeLN space and bufflen is larger than can write
+*	 dbg(TRANSPORT_CHANNEL, "Not enough room to write Have: %d and Need: %d\n", writeLN, bufflen);
+*	 return 0;
+*      }
+*      else {
+*/
+
+	//More Memcpy
+
+
+//      }
+//   }
+
+   command error_t Transport.receive(pack* package) {
+      dbg(TRANSPORT_CHANNEL, "Receiving\n");
+
+
+   }
+
+/**   command uint16_t Transport.read(socket_t fd, uint8_t *buff, uint16_t bufflen) {
+*//      socket_t *socket;
+*      int x;
+*      int a = 0;
+*      int readLN = 0;
+*
+*      dbg(TRANSPORT_CHANNEL, "Reading\n");
+*
+*      for(x = 0; x < call sList.size(); x++) {
+*         socket = call sList.get(x);
+*	 if (socket == fd){			//What to check src port?
+*	    a++;
+*	    break;
+*	 }
+*      }
+*
+*      if (a != 1) {
+*         dbg(TRANSPORT_CHANNEL, "Shit broke yo\n Error in read list\n");
+*	 return 0;	//ERROR
+*      }
+*      else if (socket.lastRcvd == socket.lastRead) {
+         dbg(TRANSPORT_CHANNEL, "Nothing to read\n");
+         return 0;	//Nothing to read
+      }
+      else if (socket.lastRcvd > socket.lastRead) {
+         dbg(TRANSPORT_CHANNEL, "Somthing to read\n");
+	 readLN = socket.lastRcvd - socket.lastRead;		//Account for stuff that has not already been read
+      }
+      else {							//Means that lastRead > lastRcvd
+	 dbg(TRANSPORT_CHANNEL, "Somthing to read\n");		//So the buffer has gone around a whole loop
+	 readLN = (SOCKET_BUFFER_SIZE - socket.lastRead - socket.lastRcvd);
+      }
+
+      if (bufflen < readLN) {
+	 //Prevents reading more than buffer size
+	 dbg(TRANSPORT_CHANNEL, "Trying to read more than buffer size\n");
+	 readLN = bufflen;
+      }
+
+      //MEMCPY COPYING INTO BUFFER?????
+
+      
+
+      return readLN;
+   }
+
+   command error_t Transport.connect(socket_t fd, socket_addr_t * addr) {
+   //Does a hand shake for opening up a connection
+
+
+      dbg(TRANSPORT_CHANNEL, "Connecting\n");
+
+/**       tcpPack.destPort = fd.dest.port;
+*      tcpPack.srcPort = fd.src.port;
+*      tcpPack.seq = //RANDOM NUM??
+*      tcpPack.ack = 0;
+*      tcpPack.flag = 0;	//SYN NUM??
+*      tcpPack.adWindow = SOCKET_BUFFER_SIZE;
+*/
+
+
+
+   }
+
+   command error_t Transport.close(socket_t fd) {
+   //Does a hand shake for closing down connections
+
+      dbg(TRANSPORT_CHANNEL, "Closing\n");
+   //MSL????
+
+   }
+
+   command error_t Transport.release(socket_t fd) {
+      dbg(TRANSPORT_CHANNEL, "Releasing\n");
+      //Optional
+   }
+
+   command error_t Transport.listen(socket_t fd) {
+      dbg(TRANSPORT_CHANNEL, "Listening\n");
+
+      if (fd.state == CLOSED) {
+	 fd.state = LISTEN;
+	 return SUCCESS;
+      }
+      else
+	 return FAIL;
+   }
+}

@@ -1,0 +1,23 @@
+//Holds TCP structs
+
+#ifndef TCPPACK_H
+#define TCPPACK_H
+
+typedef nx_struct tcpPack{
+        //Source Port
+        nx_uint16_t srcPort;
+	//Destination Port
+        nx_uin16_t destPort;
+	//Sequence Number
+        nx_uint8_t seq;
+	//Acknowledgement
+        nx_uint16_t ack;	//16? vv
+	//Flag
+        nx_uint16_t flag;
+	//Advertised Window
+        nx_uint16_t adWin;
+	//Data
+        nx_uint16_t data;
+}tcpPack;
+
+#endif

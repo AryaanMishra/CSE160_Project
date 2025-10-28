@@ -27,7 +27,6 @@ implementation{
    CommandHandlerP.Pool -> PoolC;
    CommandHandlerP.Queue -> QueueC;
 
-
    components ActiveMessageC;
    CommandHandlerP.Packet -> ActiveMessageC;
 }
