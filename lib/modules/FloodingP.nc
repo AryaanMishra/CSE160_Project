@@ -6,10 +6,11 @@
 
 generic module FloodingP(){
     provides interface Flooding;
-    
+
     uses interface SimpleSend as Sender;
     uses interface Random;
     uses interface Hashmap<uint16_t>;
+    uses interface LinkLayer;
 }
 
 implementation{

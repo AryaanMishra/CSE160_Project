@@ -14,11 +14,13 @@ generic module NeighborDiscoveryP(){
     uses interface Random;
     uses interface SimpleSend as Sender;
     uses interface Hashmap<table>;
+    uses interface LinkLayer;
 }
 
 implementation {
     default_pack sendPackage;
     uint32_t sequenceNum = 0;
+    uint8_t buffer[28];
     table t;
 
     void makePack(default_pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);

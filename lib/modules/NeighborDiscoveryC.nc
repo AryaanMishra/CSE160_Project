@@ -3,6 +3,7 @@
 
 generic configuration NeighborDiscoveryC(int channel){
     provides interface NeighborDiscovery;
+    uses interface LinkLayer;
 }
 
 implementation{
@@ -21,6 +22,8 @@ implementation{
 
     components new HashmapC(table, 20);
     NeighborDiscoveryP.Hashmap -> HashmapC;
+
+    NeighborDiscoveryP.LinkLayer = LinkLayer;
 
 
 }

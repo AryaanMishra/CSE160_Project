@@ -3,6 +3,7 @@
 
 generic configuration FloodingC(){
     provides interface Flooding;
+    uses interface LinkLayer;
 }
 
 implementation{
@@ -18,5 +19,7 @@ implementation{
     
     components new HashmapC(uint16_t, 20);
     FloodingP.Hashmap -> HashmapC;
+
+    FloodingP.LinkLayer = LinkLayer;
 
 }

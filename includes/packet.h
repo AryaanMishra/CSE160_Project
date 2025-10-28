@@ -8,6 +8,9 @@
 
 # include "protocol.h"
 #include "channels.h"
+#include "flood_header.h"
+#include "ll_header.h"
+#include "nd_header.h"
 
 enum{
 	PACKET_HEADER_LENGTH = 8,
@@ -15,6 +18,15 @@ enum{
 	MAX_TTL = 15
 };
 
+typedef nx_struct node_cost{
+	nx_uint16_t node;
+	nx_uint8_t cost;
+} node_cost;
+
+typedef nx_struct lsa_pack{
+	nx_uint8_t num_entries;
+	node_cost entries[6];
+} lsa_pack;
 
 typedef nx_struct default_pack{
 	nx_uint16_t dest;

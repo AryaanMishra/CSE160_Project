@@ -18,8 +18,12 @@ generic module LinkLayerP(){
 
 implementation{
 
-    command void LinkLayer.testing(){
-        dbg(NEIGHBOR_CHANNEL, "is this working");
+    command nx_uint8_t* LinkLayer.buildLLHeader(nx_uint8_t protocol, uint8_t* buffer, nx_uint16_t dest){
+        ll_header* ll = (ll_header*)buffer;
+        ll->src = TOS_NODE_ID;
+        ll->dest = dest;
+        ll->protocol = protocol;
+        return ll->payload;
     }
 
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){

@@ -3,6 +3,8 @@
 
 generic configuration LinkLayerC(){
     provides interface LinkLayer;
+    uses interface NeighborDiscovery as ND;
+    uses interface Flooding as Flood;
 }
 
 implementation{
@@ -12,9 +14,7 @@ implementation{
     components new AMReceiverC(AM_PACK) as GeneralReceive;
     LinkLayerP.Receive -> GeneralReceive;
 
-    components new NeighborDiscoveryC(AM_PACK);
-    LinkLayerP.ND -> NeighborDiscoveryC;
+    LinkLayerP.ND = ND;
 
-    components new FloodingC();
-    LinkLayerP.Flood -> FloodingC;
+    LinkLayerP.Flood = Flood;
 }

@@ -40,7 +40,6 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      call LinkLayer.testing();
 
    }
 
