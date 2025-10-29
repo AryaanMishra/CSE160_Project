@@ -5,6 +5,8 @@ generic configuration LinkLayerC(){
     provides interface LinkLayer;
     uses interface NeighborDiscovery as ND;
     uses interface Flooding as Flood;
+
+    uses interface IP as IP;
 }
 
 implementation{
@@ -15,6 +17,8 @@ implementation{
     LinkLayerP.Receive -> GeneralReceive;
 
     LinkLayerP.ND = ND;
+
+    LinkLayerP.IP = IP;
 
     LinkLayerP.Flood = Flood;
 }

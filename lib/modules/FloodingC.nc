@@ -4,6 +4,7 @@
 generic configuration FloodingC(){
     provides interface Flooding;
     uses interface LinkLayer;
+    uses interface LinkState;
 }
 
 implementation{
@@ -21,5 +22,6 @@ implementation{
     FloodingP.Hashmap -> HashmapC;
 
     FloodingP.LinkLayer = LinkLayer;
+    FloodingP.LinkState = LinkState;
 
 }

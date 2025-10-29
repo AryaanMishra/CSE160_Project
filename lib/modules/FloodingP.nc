@@ -5,6 +5,7 @@
 #include "../../includes/protocol.h"
 #include "../../includes/flood_header.h"
 #include "../../includes/ll_header.h"
+#include "../../includes/linkstate.h"
 
 generic module FloodingP(){
     provides interface Flooding;
@@ -13,6 +14,7 @@ generic module FloodingP(){
     uses interface Random;
     uses interface Hashmap<uint16_t>;
     uses interface LinkLayer;
+    uses interface LinkState;
 }
 
 implementation{
@@ -67,74 +69,39 @@ implementation{
         dbg(FLOODING_CHANNEL, "NODE %u: FLOODED LSA, Sequence: %u\n", TOS_NODE_ID, sequence_number);
     }
 
-    command message_t* Flooding.floodReceive(message_t* msg, void* payload, uint8_t len){
+    command message_t* Flooding.floodReceive(message_t* msg, void* payload, uint8_t len, uint8_t protocol){
         if(len==sizeof(pack)){
             ll_header* ll = (ll_header*)payload;// Get Link Layer header first
             
-            if(ll->protocol == PROTOCOL_FLOODING){
-                // Handle regular flooding packets
-                flood_header* myMsg = (flood_header*)ll->payload;
-                myMsg->TTL--;
-                if(myMsg->TTL <= 0){
-                    return msg;
-                }
-                else{
-                    if(call Hashmap.contains(myMsg->flood_src)){
-                        if(call Hashmap.get(myMsg->flood_src) < myMsg->seq){
-                            call Hashmap.insert(myMsg->flood_src, myMsg->seq);
-                            dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
-                            call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
-                        }
-                        else{
-                            dbg(FLOODING_CHANNEL, "NODE %u: DROPPED A MESSAGE\n", TOS_NODE_ID);
-                            return msg;
-                        }
-                    }
-                    else{
-                        call Hashmap.insert(myMsg->flood_src, myMsg->seq);
-                        call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
-                        dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
-                    }
-                }
-                
-            } else if(ll->protocol == PROTOCOL_LSA){
-                // Handle LSA packets
-                flood_header* fh = (flood_header*)ll->payload;
-                lsa_pack* lsa = (lsa_pack*)fh->payload;
-                
-                fh->TTL--;
-                if(fh->TTL <= 0){
-                    return msg;  // TTL expired
-                }
-                
-                // Check if we should forward this LSA
-                if(call Hashmap.contains(fh->flood_src)){
-                    if(call Hashmap.get(fh->flood_src) < fh->seq){
-                        // Newer LSA - forward it
-                        call Hashmap.insert(fh->flood_src, fh->seq);
-                        call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
-                        
-                        // LSA received and forwarded - processing handled elsewhere
-                        
-                        dbg(FLOODING_CHANNEL, "NODE %u: Forwarded LSA from %u, seq %u\n", 
-                            TOS_NODE_ID, fh->flood_src, fh->seq);
-                    } else {
-                        dbg(FLOODING_CHANNEL, "NODE %u: Dropped old LSA from %u\n", 
-                            TOS_NODE_ID, fh->flood_src);
-                    }
-                } else {
-                    // First time seeing LSA from this source - forward it
-                    call Hashmap.insert(fh->flood_src, fh->seq);
-                    call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
-                    
-                    // LSA received and forwarded - processing handled elsewhere
-                    //Add a callback mechanism idk if needed
-                    
-                    dbg(FLOODING_CHANNEL, "NODE %u: Forwarded new LSA from %u, seq %u\n", 
-                        TOS_NODE_ID, fh->flood_src, fh->seq);
-                }
+            // Handle regular flooding packets
+            flood_header* myMsg = (flood_header*)ll->payload;
+            myMsg->TTL--;
+            if(myMsg->TTL <= 0){
+                return msg;
             }
-            
+            else{
+                if(call Hashmap.contains(myMsg->flood_src)){
+                    if(call Hashmap.get(myMsg->flood_src) < myMsg->seq){
+                        call Hashmap.insert(myMsg->flood_src, myMsg->seq);
+                        dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
+                        call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
+                        if(protocol == PROTOCOL_LSA){
+                            call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src);
+                        }
+                    } else{
+                        dbg(FLOODING_CHANNEL, "NODE %u: DROPPED A MESSAGE\n", TOS_NODE_ID);
+                        return msg;
+                    }
+                }else{
+                    call Hashmap.insert(myMsg->flood_src, myMsg->seq);
+                    call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
+                    dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
+                    if(protocol == PROTOCOL_LSA){
+                        call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src);
+                    }
+                }
+                
+            }          
             return msg;
         }
         dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);

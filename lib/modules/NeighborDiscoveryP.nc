@@ -17,11 +17,19 @@ generic module NeighborDiscoveryP(){
     uses interface SimpleSend as Sender;
     uses interface Hashmap<table>;
     uses interface LinkLayer;
+    uses interface LinkState;
 }
 
 implementation {
     uint32_t sequenceNum = 0;
     table t;
+    bool isSteady = FALSE;
+
+    command void NeighborDiscovery.setSteady(){
+        isSteady = TRUE;
+        dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
+        call LinkState.build_and_flood_LSA();
+    }
 
 
 // Calls neighbor discovery on a timer
@@ -68,7 +76,7 @@ implementation {
                     t.seq = 1;
                 }
                 t.isActive = TRUE;
-                call Hashmap.insert(ll->src, t);
+                call Hashmap.insert(ll->src, t);    
 
             }
             else if (nd->protocol == PROTOCOL_PING){
@@ -100,6 +108,10 @@ implementation {
             if(integrity < 80){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
+                // Trigger LSA update when neighbor becomes inactive (protected from recursion)
+                if(isSteady){
+                    call LinkState.build_and_flood_LSA();
+                }
             }
         }
         return;

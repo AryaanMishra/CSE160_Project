@@ -15,9 +15,10 @@ implementation{
     LinkStateP.ND = ND;
     LinkStateP.Flood = Flood;
 
-    components new TimerMilliC() as LSATimer;
-    LinkStateP.LSATimer -> LSATimer;
-    
+
+    components new TimerMilliC() as spTimer;
+    LinkStateP.spTimer -> spTimer;
+
     components new HashmapC(route_entry_t, 20) as RoutingTable;
     LinkStateP.RoutingTable -> RoutingTable;
     

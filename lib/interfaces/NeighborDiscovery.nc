@@ -3,6 +3,7 @@
 #include "../../includes/neighborTable.h"
 
 interface NeighborDiscovery {
+    command void setSteady();
     command void findNeighbors();
     command void printNeighbors();
     command message_t* neighborReceive(message_t* msg, void* payload, uint8_t len);

@@ -6,8 +6,6 @@ typedef nx_struct route_entry {
     nx_uint16_t destination;      // Where we want to go
     nx_uint16_t next_hop;         // First hop to get there
     nx_uint8_t cost;              // Total cost to destination
-    nx_uint16_t backup_next_hop;  // Alternative route (optional)
-    nx_uint8_t backup_cost;       // Cost of backup route
 } route_entry_t;
 
 // LSA cache entry - prevents processing old LSA updates

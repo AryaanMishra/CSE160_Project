@@ -14,6 +14,8 @@ generic module LinkLayerP(){
     uses interface NeighborDiscovery as ND;
 
     uses interface Flooding as Flood;
+
+    uses interface IP as IP;
 }
 
 implementation{
@@ -35,7 +37,10 @@ implementation{
                 call ND.neighborReceive(msg, payload, len);
             }
             else if(ll->protocol == PROTOCOL_FLOODING || ll->protocol == PROTOCOL_LSA){
-                call Flood.floodReceive(msg, payload, len);
+                call Flood.floodReceive(msg, payload, len, ll->protocol);
+            }
+            else if(ll->protocol == PROTOCOL_IP || ll->protocol == PROTOCOL_IPACK){
+                call IP.ipRecieve(msg, payload, len, ll->protocol);
             }
 
             return msg;

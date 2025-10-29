@@ -30,10 +30,16 @@ module Node{
 
    uses interface LinkState;
 
+   uses interface IP as IP;
+
+   uses interface Timer<TMilli> as steadyTimer;
+
+
 }
 
 implementation{
    pack sendPackage;
+
    // Prototype (used by other handlers in this module)
    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 
@@ -42,11 +48,15 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      
-      // Start LinkState after a delay to let neighbors stabilize
-      call LinkState.start();
+      call steadyTimer.startOneShot(30000);
 
    }
+
+   event void steadyTimer.fired(){
+      call Neighbor.setSteady();
+   }
+
+
 
    event void AMControl.startDone(error_t err){
       if(err == SUCCESS){
@@ -66,6 +76,7 @@ implementation{
       // Implement proper ping via IP layer
       // For now, just log the ping request
       dbg(GENERAL_CHANNEL, "Ping functionality not yet implemented\n");
+      call IP.buildIP(destination);
    }
 
    
@@ -78,16 +89,11 @@ implementation{
       call LinkState.build_and_flood_LSA();
    }
 
-   event void CommandHandler.printRouteTable(){}
+   event void CommandHandler.printRouteTable(){
+      call LinkState.printRoute();
+   }
 
    event void CommandHandler.printLinkState(){
-      dbg(ROUTING_CHANNEL, "=== LinkState Status for Node %d ===\n", TOS_NODE_ID);
-      // Test if we have any routes
-      if(call LinkState.has_route_to(1)) {
-         dbg(ROUTING_CHANNEL, "Has route to node 1\n");
-      } else {
-         dbg(ROUTING_CHANNEL, "No route to node 1 yet\n");
-      }
    }
 
    event void CommandHandler.printDistanceVector(){}
@@ -99,9 +105,5 @@ implementation{
    event void CommandHandler.setAppServer(){}
 
    event void CommandHandler.setAppClient(){}
-
-   event void LinkState.neighbor_table_changed() {
-      // Node doesn't need to do anything when neighbor table changes
-   }
 
 }

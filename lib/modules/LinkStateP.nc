@@ -11,9 +11,9 @@ generic module LinkStateP(){
     provides interface LinkState;
     uses interface NeighborDiscovery as ND;
     uses interface Flooding as Flood;
-    uses interface Timer<TMilli> as LSATimer;
     uses interface Hashmap<route_entry_t> as RoutingTable;
     uses interface Hashmap<lsa_cache_entry_t> as LSACache;
+    uses interface Timer<TMilli> as spTimer;
 
 
 }
@@ -24,13 +24,14 @@ implementation{
     bool topology_ready = FALSE;        // Do we have enough LSAs to compute routes?
     uint8_t nodes_heard_from = 0;       // How many nodes have sent us LSAs?
     uint8_t expected_total_nodes = 0;   // Total nodes we expect in network
-    uint16_t adj[20][20] = {0};
-    
+    uint16_t adj[20][20];
+
     //Forward Declaration of internal functions
     void build_and_send_LSA();
     bool is_newer_LSA(uint16_t node_id, uint16_t seq_num);
     void process_LSA_update(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num);
     void update_routing_table_from_dijkstra();
+    task void dijkstra();
 
     void build_and_send_LSA(){
         lsa_pack lsa;
@@ -41,22 +42,25 @@ implementation{
         dbg(ROUTING_CHANNEL, "NODE %u: BUILDING LSA\n", TOS_NODE_ID);
 
         // Get neighbor information from NeighborDiscovery module
-        // Note: You'll need to add these methods to NeighborDiscovery interface
-        neighbor_keys = call ND.getActiveNeighborKeys(); //getActiveNeighborKeys()?????
+        neighbor_keys = call ND.getActiveNeighborKeys();
         num_active_neighbors = call ND.getNumActiveNeighbors();
 
         lsa.num_entries = (num_active_neighbors > 6) ? 6 : num_active_neighbors;
 
         for(i = 0; i < lsa.num_entries; i++){
             lsa.entries[i].node = neighbor_keys[i];
-            lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]); // Assuming uniform cost for simplicity
-            dbg(ROUTING_CHANNEL, "  Neighbor: %u, Cost: %u\n", lsa.entries[i].node, lsa.entries[i].cost);
+            lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]);
         }
 
         // Increment our sequence number and flood the LSA
         my_sequence_number++;
         call Flood.flood_LSA(&lsa, my_sequence_number);
-        dbg(ROUTING_CHANNEL, "Node %u: Flooded LSA with seq %u\n", TOS_NODE_ID, my_sequence_number);
+
+        // Start periodic dijkstra if not already running and trigger immediate run
+        if(!call spTimer.isRunning()){
+            call spTimer.startPeriodic(3000);
+        }
+        post dijkstra();
     }
 
     command void LinkState.build_and_flood_LSA() {
@@ -93,17 +97,20 @@ implementation{
         for (i = 0; i < lsa->num_entries; i++) {
             addEdge(source_node, lsa->entries[i].node, lsa->entries[i].cost);
         }
+
+        // Trigger dijkstra to recompute routes with updated topology
+        if(!call spTimer.isRunning()){
+            call spTimer.startPeriodic(3000);
+        }
+        post dijkstra();
     }
 
     command void LinkState.process_received_LSA(lsa_pack* lsa, uint16_t src_node) {
         uint16_t seq_num = my_sequence_number;  // Placeholder for now
         
-        dbg(ROUTING_CHANNEL, "NODE %u: Received LSA from node %u\n", TOS_NODE_ID, src_node);
         
         if(is_newer_LSA(src_node, seq_num)) {
             process_LSA_update(lsa, src_node, seq_num);
-        } else {
-            dbg(ROUTING_CHANNEL, "NODE %u: Ignoring old LSA from %u\n", TOS_NODE_ID, src_node);
         }
     }
 
@@ -133,17 +140,17 @@ implementation{
     uint16_t minDistance(uint8_t dist[], bool visited[]){
         uint8_t min = 255;
         uint16_t i = 0;
-        uint16_t index = 0;
+        uint16_t pos = 0;
         for(i = 0; i < 20; i++){
             if(visited[i] == FALSE && dist[i] <= min){
                 min = dist[i];
-                index = i;
+                pos = i;
             }
         }
-        return index;
+        return pos;
     }
 
-    void dijkstra(){
+    task void dijkstra(){
         uint8_t dist[20];
         bool visited[20];
         uint16_t previous[20];
@@ -178,44 +185,38 @@ implementation{
         for(i = 0; i < 20; i++){
             if(i != TOS_NODE_ID && dist[i] != 255){
                 uint16_t node = i;
-                uint16_t next = i;
 
                 while(previous[node] != TOS_NODE_ID && previous[node] != 255){
-                    next = node;
                     node = previous[node];
                 }
 
                 if(previous[node] == TOS_NODE_ID){
                     route.destination = i;
-                    route.next_hop = next;
+                    route.next_hop = node;
                     route.cost = dist[i];
                     call RoutingTable.insert(i, route);
-                    dbg(ROUTING_CHANNEL, "NODE %u: Route to %u via %u (cost %u)\n",
-                        TOS_NODE_ID, i, next, dist[i]);
                 }
             }
         }
     }
 
-    command void LinkState.compute_shortest_paths() {
-        dbg(ROUTING_CHANNEL, "NODE %u: Running Dijkstra algorithm\n", TOS_NODE_ID);
-        dijkstra();
+    event void spTimer.fired(){
+        post dijkstra();
     }
 
-    command void LinkState.start() {
-        dbg(ROUTING_CHANNEL, "NODE %u: Starting LinkState module\n", TOS_NODE_ID);
-        // Initialize and start periodic LSA updates
-        call LSATimer.startPeriodic(3000000); // Send LSA every 30 seconds
+    command void LinkState.printRoute(){
+        uint32_t* keys = call RoutingTable.getKeys();
+        uint32_t size = call RoutingTable.size();
+        uint32_t i = 0;
+        route_entry_t temp;
+        if(size == 0){
+            dbg(ROUTING_CHANNEL, "NO AVAILABLE ROUTES");
+            return;
+        }
+        for(i = 0; i < size; i++){
+            temp = call RoutingTable.get(keys[i]);
+            dbg(ROUTING_CHANNEL, "NODE %u; DEST: %u, NEXT_HOP: %u, COST: %u\n", TOS_NODE_ID, temp.destination, temp.next_hop, temp.cost);
+        }
     }
 
-    event void LSATimer.fired() {
-        // Periodically send our LSA
-        build_and_send_LSA();
-    }
-
-    // Event for neighbor table changes
-    default event void LinkState.neighbor_table_changed() {
-        // Default implementation - can be overridden
-    }
-    
 }

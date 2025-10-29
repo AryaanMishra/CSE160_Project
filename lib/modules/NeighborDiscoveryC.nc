@@ -4,6 +4,7 @@
 generic configuration NeighborDiscoveryC(int channel){
     provides interface NeighborDiscovery;
     uses interface LinkLayer;
+    uses interface LinkState;
 }
 
 implementation{
@@ -24,6 +25,7 @@ implementation{
     NeighborDiscoveryP.Hashmap -> HashmapC;
 
     NeighborDiscoveryP.LinkLayer = LinkLayer;
+    NeighborDiscoveryP.LinkState = LinkState;
 
 
 }

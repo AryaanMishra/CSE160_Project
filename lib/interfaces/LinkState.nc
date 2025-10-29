@@ -7,11 +7,6 @@ interface LinkState{
     command uint16_t get_next_hop(uint16_t destination);
     command uint8_t get_route_cost(uint16_t destination);
     command bool has_route_to(uint16_t destination);
+    command void printRoute();
     
-    // Dijkstra Algorithm
-    command void compute_shortest_paths();
-    
-    // Initialization and Events
-    command void start();
-    event void neighbor_table_changed();
 }
