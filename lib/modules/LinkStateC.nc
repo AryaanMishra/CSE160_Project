@@ -23,4 +23,7 @@ implementation{
     
     components new HashmapC(lsa_cache_entry_t, 20) as LSACache;
     LinkStateP.LSACache -> LSACache;
+
+    components new HashmapC(lsa_pack, 20) as NetworkTopology;
+    LinkStateP.NetworkTopology -> NetworkTopology;
 }

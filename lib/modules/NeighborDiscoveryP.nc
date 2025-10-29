@@ -190,4 +190,5 @@ implementation {
         }else {
             return 5; // Lower cost
         }
+    }
 }

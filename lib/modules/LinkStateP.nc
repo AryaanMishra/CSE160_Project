@@ -14,6 +14,8 @@ generic module LinkStateP(){
     uses interface Timer<TMilli> as LSATimer;
     uses interface Hashmap<route_entry_t> as RoutingTable;
     uses interface Hashmap<lsa_cache_entry_t> as LSACache;
+    uses interface Hashmap<lsa_pack> as NetworkTopology;  // To store received LSAs
+
 }
 
 implementation{
@@ -46,8 +48,8 @@ implementation{
         lsa.num_entries = (num_active_neighbors > 6) ? 6 : num_active_neighbors;
 
         for(i = 0; i < lsa.num_entries; i++){
-            lsa.entries[i].neighbor_id = neighbor_keys[i];
-            lsa.entries[i].cost = 1; // Assuming uniform cost for simplicity
+            lsa.entries[i].node = neighbor_keys[i];
+            lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]); // Assuming uniform cost for simplicity
             dbg(ROUTING_CHANNEL, "  Neighbor: %u, Cost: %u\n", lsa.entries[i].node, lsa.entries[i].cost);
         }
 
@@ -61,4 +63,43 @@ implementation{
         build_and_send_LSA();
     }
 
+    bool is_newer_LSA(uint16_t node_id, uint32_t seq_num) {
+        lsa_cache_entry_t* cached_entry;
+        if (!call LSACache.contains(node_id)) {
+            return TRUE;
+        }
+        cached_entry = call LSACache.get(node_id);
+        return (seq_num > cached_entry->sequence_number);
+    }
+
+    void process_LSA_update(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num) {
+        lsa_cache_entry_t new_entry;
+        uint8_t i;
+        bool topology_changed = FALSE;
+
+        cache_entry.node_id = source_node;
+        cache_entry.sequence_number = seq_num;
+        cache_entry.timestamp = call Timer.getNow();
+        call LSACache.insert(source_node, cache_entry);
+
+        for (i = 0; i < lsa->num_entries; i++) {
+            topology_changed = TRUE; 
+        }
+        if (topology_changed) {
+            dbg(ROUTING_CHANNEL, "NODE %u: TOPOLOGY CHANGED, RUNNING DIJKSTRA\n", TOS_NODE_ID);
+            run_dijkstra_algorithm();
+        }
+    }
+
+    event void Flood.lsa_received(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num) {
+        dbg(ROUTING_CHANNEL, "NODE %u: Received LSA from node %u, seq %u\n", 
+            TOS_NODE_ID, source_node, seq_num);
+        
+        if(is_newer_LSA(source_node, seq_num)) {
+            call process_received_LSA(lsa, source_node); // Use your interface command
+        } else {
+            dbg(ROUTING_CHANNEL, "NODE %u: Ignoring old LSA from %u\n", 
+                TOS_NODE_ID, source_node);
+        }
+    }
 }
