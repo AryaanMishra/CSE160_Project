@@ -128,17 +128,24 @@ def main():
     s = TestSim();
     s.t = Tossim([])
     s.runTime(10);
-    s.loadTopo("example.topo");
+    s.loadTopo("long_line.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
     s.runTime(50);
     s.addChannel(s.NEIGHBOR_CHANNEL);
-    while(True):
-        i = 0
-        for i in s.moteids:
-            s.runTime(5);
-            s.neighborDMP(i);
-        s.runTime(100);
+    s.addChannel(s.FLOODING_CHANNEL);
+    s.runTime(20);
+    s.neighborDMP(5);
+    s.runTime(20);
+    s.ping(3, 19, "Test 1");
+    s.runTime(20);
+    s.moteOff(5);
+    s.runTime(20);
+    print "\nFlooding Finished \n"
+    s.ping(4, 7, "Test 2");
+    s.runTime(20);
+    s.neighborDMP(6);
+    s.runTime(20);
 
 if __name__ == '__main__':
     main()

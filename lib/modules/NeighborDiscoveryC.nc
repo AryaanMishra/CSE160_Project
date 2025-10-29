@@ -3,14 +3,13 @@
 
 generic configuration NeighborDiscoveryC(int channel){
     provides interface NeighborDiscovery;
+    uses interface LinkLayer;
 }
 
 implementation{
     components new NeighborDiscoveryP();
     NeighborDiscovery = NeighborDiscoveryP.NeighborDiscovery;
 
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
-     NeighborDiscoveryP.Receive -> GeneralReceive;
 
     components new TimerMilliC() as neighborTimer;
     NeighborDiscoveryP.neighborTimer -> neighborTimer;
@@ -23,6 +22,8 @@ implementation{
 
     components new HashmapC(table, 20);
     NeighborDiscoveryP.Hashmap -> HashmapC;
+
+    NeighborDiscoveryP.LinkLayer = LinkLayer;
 
 
 }
