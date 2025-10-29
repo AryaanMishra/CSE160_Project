@@ -28,6 +28,8 @@ module Node{
 
    uses interface LinkLayer;
 
+   uses interface LinkState;
+
 }
 
 implementation{
@@ -40,6 +42,9 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
+      
+      // Start LinkState after a delay to let neighbors stabilize
+      call LinkState.start();
 
    }
 
@@ -57,20 +62,33 @@ implementation{
 
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
-      //dbg(GENERAL_CHANNEL, "PING EVENT \n");
-      // Flooding.flood expects an lsa_pack* argument; pass NULL if no payload
-      call Flooding.flood(NULL);
+      dbg(GENERAL_CHANNEL, "PING EVENT: Node %d trying to ping %d\n", TOS_NODE_ID, destination);
+      // Implement proper ping via IP layer
+      // For now, just log the ping request
+      dbg(GENERAL_CHANNEL, "Ping functionality not yet implemented\n");
    }
 
    
 
    event void CommandHandler.printNeighbors(){
       call Neighbor.printNeighbors();
+      
+      // Also trigger LSA generation to test LinkState
+      dbg(ROUTING_CHANNEL, "Triggering LSA generation for Node %d\n", TOS_NODE_ID);
+      call LinkState.build_and_flood_LSA();
    }
 
    event void CommandHandler.printRouteTable(){}
 
-   event void CommandHandler.printLinkState(){}
+   event void CommandHandler.printLinkState(){
+      dbg(ROUTING_CHANNEL, "=== LinkState Status for Node %d ===\n", TOS_NODE_ID);
+      // Test if we have any routes
+      if(call LinkState.has_route_to(1)) {
+         dbg(ROUTING_CHANNEL, "Has route to node 1\n");
+      } else {
+         dbg(ROUTING_CHANNEL, "No route to node 1 yet\n");
+      }
+   }
 
    event void CommandHandler.printDistanceVector(){}
 
@@ -82,5 +100,8 @@ implementation{
 
    event void CommandHandler.setAppClient(){}
 
+   event void LinkState.neighbor_table_changed() {
+      // Node doesn't need to do anything when neighbor table changes
+   }
 
 }

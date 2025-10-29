@@ -22,7 +22,7 @@ typedef struct dijkstra_node {
     nx_uint16_t node_id;          // Node identifier
     nx_uint8_t distance;          // Current shortest distance from source
     nx_uint16_t previous;         // Previous node in shortest path
-    nx_bool visited;              // Has Dijkstra processed this node?
+    nx_uint8_t visited;           // Has Dijkstra processed this node? (0=false, 1=true)
 } dijkstra_node_t;
 
 enum {

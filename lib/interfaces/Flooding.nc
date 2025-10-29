@@ -3,6 +3,4 @@ interface Flooding{
     command message_t* floodReceive(message_t* msg, void* payload, uint8_t len);
     
     command void flood_LSA(lsa_pack* lsa_payload, uint16_t sequence_number);
-    event void lsa_received(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num);
-
 }

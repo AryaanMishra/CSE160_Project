@@ -21,7 +21,13 @@ implementation{
     command void Flooding.flood(lsa_pack* payload){
         uint8_t buffer[28];
         flood_header* fh = (flood_header*)call LinkLayer.buildLLHeader(PROTOCOL_FLOODING, buffer, AM_BROADCAST_ADDR);
-        lsa_pack* lsa_ptr;  // Add missing variable declaration
+        lsa_pack* lsa_ptr;
+        
+        // Safety check for NULL payload
+        if(payload == NULL) {
+            dbg(FLOODING_CHANNEL, "NODE %u: Cannot flood NULL payload\n", TOS_NODE_ID);
+            return;
+        }
         
         sequenceNum++;
         fh->flood_src = TOS_NODE_ID;
@@ -108,8 +114,7 @@ implementation{
                         call Hashmap.insert(fh->flood_src, fh->seq);
                         call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
                         
-                        // Signal LinkState about received LSA
-                        signal lsa_received(lsa, fh->flood_src, fh->seq);
+                        // LSA received and forwarded - processing handled elsewhere
                         
                         dbg(FLOODING_CHANNEL, "NODE %u: Forwarded LSA from %u, seq %u\n", 
                             TOS_NODE_ID, fh->flood_src, fh->seq);
@@ -122,8 +127,8 @@ implementation{
                     call Hashmap.insert(fh->flood_src, fh->seq);
                     call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
                     
-                    // Signal LinkState about received LSA
-                    signal lsa_received(lsa, fh->flood_src, fh->seq);
+                    // LSA received and forwarded - processing handled elsewhere
+                    //Add a callback mechanism idk if needed
                     
                     dbg(FLOODING_CHANNEL, "NODE %u: Forwarded new LSA from %u, seq %u\n", 
                         TOS_NODE_ID, fh->flood_src, fh->seq);

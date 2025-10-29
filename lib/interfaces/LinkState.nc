@@ -1,6 +1,3 @@
-#include "../../includes/packet.h"
-#include "../../includes/neighborTable.h"
-
 interface LinkState{
     // LSA Management
     command void build_and_flood_LSA();

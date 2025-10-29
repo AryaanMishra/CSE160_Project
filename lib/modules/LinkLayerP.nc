@@ -34,7 +34,7 @@ implementation{
             if(ll->protocol == PROTOCOL_PING || ll->protocol == PROTOCOL_PINGREPLY){
                 call ND.neighborReceive(msg, payload, len);
             }
-            else if(ll->protocol == PROTOCOL_FLOODING){
+            else if(ll->protocol == PROTOCOL_FLOODING || ll->protocol == PROTOCOL_LSA){
                 call Flood.floodReceive(msg, payload, len);
             }
 

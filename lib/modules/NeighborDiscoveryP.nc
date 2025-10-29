@@ -165,6 +165,7 @@ implementation {
 
     command uint8_t NeighborDiscovery.getNeighborCost(uint16_t neighbor_id){
         uint32_t integrity;
+        table neighbor_info;
 
         if(!call Hashmap.contains(neighbor_id)){
             return 255; // Unknown neighbor
@@ -172,7 +173,7 @@ implementation {
 
         updateActive();
 
-        table neighbor_info = call Hashmap.get(neighbor_id);
+        neighbor_info = call Hashmap.get(neighbor_id);
         if(!neighbor_info.isActive){
             return 255; // Inactive neighbor
         }

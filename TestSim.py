@@ -139,6 +139,7 @@ def main():
     s.runTime(50);
     s.addChannel(s.NEIGHBOR_CHANNEL);
     s.addChannel(s.FLOODING_CHANNEL);
+    s.addChannel(s.ROUTING_CHANNEL);
     s.runTime(20);
     print "\n"
     s.neighborDMP(5);

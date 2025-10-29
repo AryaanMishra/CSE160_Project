@@ -32,6 +32,11 @@ implementation {
     components new FloodingC() as Flooding;
     Node.Flooding -> Flooding;
 
+    components new LinkStateC() as LinkState;
+    Node.LinkState -> LinkState;
+    LinkState.ND -> NeighborDiscovery;
+    LinkState.Flood -> Flooding;
+
     components CommandHandlerC;
     Node.CommandHandler -> CommandHandlerC;
 
