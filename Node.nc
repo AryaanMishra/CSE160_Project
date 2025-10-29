@@ -48,7 +48,7 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      call steadyTimer.startOneShot(30000);
+      call steadyTimer.startOneShot(3000);
 
    }
 

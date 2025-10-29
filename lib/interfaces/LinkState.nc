@@ -1,12 +1,12 @@
 interface LinkState{
     // LSA Management
     command void build_and_flood_LSA();
-    command void process_received_LSA(lsa_pack* lsa, uint16_t src_node);
-    
+    command void process_received_LSA(lsa_pack* lsa, uint16_t src_node, uint16_t seq_num);
+
     // Routing Table Access
     command uint16_t get_next_hop(uint16_t destination);
     command uint8_t get_route_cost(uint16_t destination);
     command bool has_route_to(uint16_t destination);
     command void printRoute();
-    
+
 }

@@ -86,7 +86,7 @@ implementation{
                         dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                         call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
                         if(protocol == PROTOCOL_LSA){
-                            call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src);
+                            call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src, myMsg->seq);
                         }
                     } else{
                         dbg(FLOODING_CHANNEL, "NODE %u: DROPPED A MESSAGE\n", TOS_NODE_ID);
@@ -97,7 +97,7 @@ implementation{
                     call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
                     dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                     if(protocol == PROTOCOL_LSA){
-                        call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src);
+                        call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src, myMsg->seq);
                     }
                 }
                 

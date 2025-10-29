@@ -69,14 +69,24 @@ implementation {
             nd_header* nd = (nd_header*)ll->payload;
             if(nd->protocol == PROTOCOL_PINGREPLY){
                 //dbg(NEIGHBOR_CHANNEL, "Received PINGREPLY from Node %d\n", ll->src);
+                bool wasInactive = FALSE;
+                bool isNew = FALSE;
 
                 if(call Hashmap.contains(ll->src)){
                     t.seq = (call Hashmap.get(ll->src)).seq + 1;
+                    wasInactive = !(call Hashmap.get(ll->src)).isActive;
                 } else{
                     t.seq = 1;
+                    isNew = TRUE;
                 }
                 t.isActive = TRUE;
-                call Hashmap.insert(ll->src, t);    
+                call Hashmap.insert(ll->src, t);
+
+                // Trigger LSA if new neighbor or reactivated neighbor
+                if((isNew || wasInactive) && isSteady){
+                    dbg(NEIGHBOR_CHANNEL, "NODE %u: New/reactivated neighbor %u, triggering LSA\n", TOS_NODE_ID, ll->src);
+                    call LinkState.build_and_flood_LSA();
+                }
 
             }
             else if (nd->protocol == PROTOCOL_PING){
@@ -99,20 +109,24 @@ implementation {
         uint32_t* keys = call Hashmap.getKeys();
         uint16_t j = 0;
         uint32_t integrity;
+        bool changed = FALSE;
 
         for(j; j < call Hashmap.size(); j++){
 
             t.seq = (call Hashmap.get(keys[j])).seq;
             integrity = (t.seq*100) / sequenceNum;
 
-            if(integrity < 80){
+            if(integrity < 80 && (call Hashmap.get(keys[j])).isActive == TRUE){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
-                // Trigger LSA update when neighbor becomes inactive (protected from recursion)
-                if(isSteady){
-                    call LinkState.build_and_flood_LSA();
-                }
+                changed = TRUE;
+                dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor %u became inactive\n", TOS_NODE_ID, keys[j]);
             }
+        }
+
+        if(changed && isSteady){
+            dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor table changed, triggering LSA\n", TOS_NODE_ID);
+            call LinkState.build_and_flood_LSA();
         }
         return;
     }

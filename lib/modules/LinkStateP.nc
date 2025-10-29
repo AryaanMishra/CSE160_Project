@@ -25,13 +25,26 @@ implementation{
     uint8_t nodes_heard_from = 0;       // How many nodes have sent us LSAs?
     uint8_t expected_total_nodes = 0;   // Total nodes we expect in network
     uint16_t adj[20][20];
+    bool adj_initialized = FALSE;       // Track if adjacency matrix is initialized
 
     //Forward Declaration of internal functions
     void build_and_send_LSA();
     bool is_newer_LSA(uint16_t node_id, uint16_t seq_num);
     void process_LSA_update(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num);
     void update_routing_table_from_dijkstra();
+    void init_adj_matrix();
     task void dijkstra();
+
+    void init_adj_matrix(){
+        uint16_t i, j;
+        for(i = 0; i < 20; i++){
+            for(j = 0; j < 20; j++){
+                adj[i][j] = 0;
+            }
+        }
+        adj_initialized = TRUE;
+        dbg(ROUTING_CHANNEL, "NODE %u: Adjacency matrix initialized\n", TOS_NODE_ID);
+    }
 
     void build_and_send_LSA(){
         lsa_pack lsa;
@@ -86,15 +99,23 @@ implementation{
         lsa_pack stored_lsa;
         uint8_t i;
 
+        // Initialize adjacency matrix if not done yet
+        if(!adj_initialized){
+            init_adj_matrix();
+        }
+
         cache_entry.node_id = source_node;
         cache_entry.sequence_number = seq_num;
         cache_entry.timestamp = 0;
         call LSACache.insert(source_node, cache_entry);
 
-        //Create Adjanceny Matrix
-    
+        //Create Adjacency Matrix
+        dbg(ROUTING_CHANNEL, "NODE %u: Processing LSA from %u with %u entries\n",
+            TOS_NODE_ID, source_node, lsa->num_entries);
 
         for (i = 0; i < lsa->num_entries; i++) {
+            dbg(ROUTING_CHANNEL, "NODE %u: Adding edge %u <-> %u (cost: %u)\n",
+                TOS_NODE_ID, source_node, lsa->entries[i].node, lsa->entries[i].cost);
             addEdge(source_node, lsa->entries[i].node, lsa->entries[i].cost);
         }
 
@@ -105,11 +126,10 @@ implementation{
         post dijkstra();
     }
 
-    command void LinkState.process_received_LSA(lsa_pack* lsa, uint16_t src_node) {
-        uint16_t seq_num = my_sequence_number;  // Placeholder for now
-        
-        
+    command void LinkState.process_received_LSA(lsa_pack* lsa, uint16_t src_node, uint16_t seq_num) {
+
         if(is_newer_LSA(src_node, seq_num)) {
+
             process_LSA_update(lsa, src_node, seq_num);
         }
     }
@@ -159,6 +179,8 @@ implementation{
         uint16_t u;
         uint16_t alt;
         route_entry_t route;
+        uint16_t routes_added = 0;
+
 
         for(i = 0; i < 20; i++){
             dist[i] = 255;
@@ -182,6 +204,13 @@ implementation{
             }
         }
 
+        // Clear old routes before adding new ones
+        for(i = 0; i < 20; i++){
+            if(call RoutingTable.contains(i)){
+                call RoutingTable.remove(i);
+            }
+        }
+
         for(i = 0; i < 20; i++){
             if(i != TOS_NODE_ID && dist[i] != 255){
                 uint16_t node = i;
@@ -195,9 +224,11 @@ implementation{
                     route.next_hop = node;
                     route.cost = dist[i];
                     call RoutingTable.insert(i, route);
+                    routes_added++;
                 }
             }
         }
+
     }
 
     event void spTimer.fired(){
