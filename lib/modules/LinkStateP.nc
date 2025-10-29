@@ -14,7 +14,7 @@ generic module LinkStateP(){
     uses interface Timer<TMilli> as LSATimer;
     uses interface Hashmap<route_entry_t> as RoutingTable;
     uses interface Hashmap<lsa_cache_entry_t> as LSACache;
-    uses interface Hashmap<lsa_pack> as NetworkTopology;  // To store received LSAs
+
 
 }
 
@@ -24,12 +24,12 @@ implementation{
     bool topology_ready = FALSE;        // Do we have enough LSAs to compute routes?
     uint8_t nodes_heard_from = 0;       // How many nodes have sent us LSAs?
     uint8_t expected_total_nodes = 0;   // Total nodes we expect in network
+    uint16_t adj[20][20] = {0};
     
     //Forward Declaration of internal functions
     void build_and_send_LSA();
     bool is_newer_LSA(uint16_t node_id, uint16_t seq_num);
     void process_LSA_update(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num);
-    void run_dijkstra_algorithm();
     void update_routing_table_from_dijkstra();
 
     void build_and_send_LSA(){
@@ -72,26 +72,26 @@ implementation{
         return (seq_num > cached_entry.sequence_number);
     }
 
+    void addEdge(uint16_t u, uint16_t v, uint8_t cost){
+        adj[u][v] = cost;
+        adj[v][u] = cost;
+    }
+
     void process_LSA_update(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num) {
         lsa_cache_entry_t cache_entry;
         lsa_pack stored_lsa;
         uint8_t i;
-        bool topology_changed = FALSE;
 
         cache_entry.node_id = source_node;
         cache_entry.sequence_number = seq_num;
         cache_entry.timestamp = 0;
         call LSACache.insert(source_node, cache_entry);
 
-        stored_lsa = *lsa;  // Copy the LSA
-        call NetworkTopology.insert(source_node, stored_lsa);
+        //Create Adjanceny Matrix
+    
 
         for (i = 0; i < lsa->num_entries; i++) {
-            topology_changed = TRUE; 
-        }
-        if (topology_changed) {
-            dbg(ROUTING_CHANNEL, "NODE %u: TOPOLOGY CHANGED, RUNNING DIJKSTRA\n", TOS_NODE_ID);
-            //run_dijkstra_algorithm();
+            addEdge(source_node, lsa->entries[i].node, lsa->entries[i].cost);
         }
     }
 
@@ -130,16 +130,82 @@ implementation{
         return call RoutingTable.contains(destination);
     }
 
+    uint16_t minDistance(uint8_t dist[], bool visited[]){
+        uint8_t min = 255;
+        uint16_t i = 0;
+        uint16_t index = 0;
+        for(i = 0; i < 20; i++){
+            if(visited[i] == FALSE && dist[i] <= min){
+                min = dist[i];
+                index = i;
+            }
+        }
+        return index;
+    }
+
+    void dijkstra(){
+        uint8_t dist[20];
+        bool visited[20];
+        uint16_t previous[20];
+        uint16_t i;
+        uint16_t j;
+        uint16_t u;
+        uint16_t alt;
+        route_entry_t route;
+
+        for(i = 0; i < 20; i++){
+            dist[i] = 255;
+            visited[i] = FALSE;
+            previous[i] = 255;  // INVALID_NODE
+        }
+        dist[TOS_NODE_ID] = 0;
+
+        for(i = 0; i < 19; i++){
+            u = minDistance(dist, visited);
+            visited[u] = TRUE;
+
+            for(j = 0; j < 20; j++){
+                if(visited[j] == FALSE && adj[u][j] != 0 && adj[u][j] != 255){
+                    alt = dist[u] + adj[u][j];
+                    if(alt < dist[j]){
+                        dist[j] = alt;
+                        previous[j] = u;
+                    }
+                }
+            }
+        }
+
+        for(i = 0; i < 20; i++){
+            if(i != TOS_NODE_ID && dist[i] != 255){
+                uint16_t node = i;
+                uint16_t next = i;
+
+                while(previous[node] != TOS_NODE_ID && previous[node] != 255){
+                    next = node;
+                    node = previous[node];
+                }
+
+                if(previous[node] == TOS_NODE_ID){
+                    route.destination = i;
+                    route.next_hop = next;
+                    route.cost = dist[i];
+                    call RoutingTable.insert(i, route);
+                    dbg(ROUTING_CHANNEL, "NODE %u: Route to %u via %u (cost %u)\n",
+                        TOS_NODE_ID, i, next, dist[i]);
+                }
+            }
+        }
+    }
+
     command void LinkState.compute_shortest_paths() {
         dbg(ROUTING_CHANNEL, "NODE %u: Running Dijkstra algorithm\n", TOS_NODE_ID);
-        // TODO: Implement Dijkstra algorithm
-        // run_dijkstra_algorithm();
+        dijkstra();
     }
 
     command void LinkState.start() {
         dbg(ROUTING_CHANNEL, "NODE %u: Starting LinkState module\n", TOS_NODE_ID);
         // Initialize and start periodic LSA updates
-        call LSATimer.startPeriodic(30000); // Send LSA every 30 seconds
+        call LSATimer.startPeriodic(3000000); // Send LSA every 30 seconds
     }
 
     event void LSATimer.fired() {
