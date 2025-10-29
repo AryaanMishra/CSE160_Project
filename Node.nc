@@ -61,6 +61,7 @@ implementation{
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
       //dbg(GENERAL_CHANNEL, "PING EVENT \n");
       //call Flooding.flood();
+      call LinkState.update();
    }
 
    

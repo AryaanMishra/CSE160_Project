@@ -35,7 +35,10 @@ implementation{
                 call ND.neighborReceive(msg, payload, len);
             }
             else if(ll->protocol == PROTOCOL_FLOODING){
-                call Flood.floodReceive(msg, payload, len);
+                call Flood.floodReceive(msg, payload, len, ll->protocol);
+            }
+            else if(ll->protocol == PROTOCOL_LINKSTATE){
+                call Flood.floodReceive(msg, payload, len, ll->protocol);
             }
 
             return msg;
