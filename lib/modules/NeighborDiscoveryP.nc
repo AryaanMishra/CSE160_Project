@@ -127,8 +127,5 @@ implementation {
         }
     }
 
-    command Hashmap getNeighborTable(){
-        return Hashmap;
-    }
 
 }

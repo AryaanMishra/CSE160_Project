@@ -43,4 +43,10 @@ implementation {
     NeighborDiscovery.LinkLayer -> LinkLayerC;
     Flooding.LinkLayer -> LinkLayerC;
 
+    components new LinkStateC() as LinkState;
+    Node.LinkState -> LinkState;
+    LinkState.ND -> NeighborDiscovery;
+    LinkState.NeighborTable -> NeighborDiscovery.NeighborTable;
+    LinkState.Flood -> Flooding;
+
 }
