@@ -43,7 +43,6 @@ implementation{
             }
         }
         adj_initialized = TRUE;
-        dbg(ROUTING_CHANNEL, "NODE %u: Adjacency matrix initialized\n", TOS_NODE_ID);
     }
 
     void build_and_send_LSA(){
@@ -52,7 +51,6 @@ implementation{
         uint16_t num_active_neighbors;
         uint8_t i;
 
-        dbg(ROUTING_CHANNEL, "NODE %u: BUILDING LSA\n", TOS_NODE_ID);
 
         // Get neighbor information from NeighborDiscovery module
         neighbor_keys = call ND.getActiveNeighborKeys();
@@ -110,12 +108,8 @@ implementation{
         call LSACache.insert(source_node, cache_entry);
 
         //Create Adjacency Matrix
-        dbg(ROUTING_CHANNEL, "NODE %u: Processing LSA from %u with %u entries\n",
-            TOS_NODE_ID, source_node, lsa->num_entries);
 
         for (i = 0; i < lsa->num_entries; i++) {
-            dbg(ROUTING_CHANNEL, "NODE %u: Adding edge %u <-> %u (cost: %u)\n",
-                TOS_NODE_ID, source_node, lsa->entries[i].node, lsa->entries[i].cost);
             addEdge(source_node, lsa->entries[i].node, lsa->entries[i].cost);
         }
 

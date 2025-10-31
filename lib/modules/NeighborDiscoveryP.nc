@@ -34,7 +34,7 @@ implementation {
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
-        call neighborTimer.startPeriodic(30000+ (call Random.rand16() % 300));
+        call neighborTimer.startPeriodic(300000+ (call Random.rand16() % 300));
     }
 
 // Broadcasts a package from the source node to all neighbors

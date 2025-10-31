@@ -12,6 +12,7 @@
 #include "includes/CommandMsg.h"
 #include "includes/sendInfo.h"
 #include "includes/channels.h"
+#include "includes/protocol.h"
 
 module Node{
    uses interface Boot;
@@ -48,7 +49,7 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      call steadyTimer.startOneShot(3000);
+      call steadyTimer.startOneShot(100000);
 
    }
 
@@ -76,7 +77,7 @@ implementation{
       // Implement proper ping via IP layer
       // For now, just log the ping request
       dbg(GENERAL_CHANNEL, "Ping functionality not yet implemented\n");
-      call IP.buildIP(destination);
+      call IP.buildIP(destination, PROTOCOL_IP);
    }
 
    

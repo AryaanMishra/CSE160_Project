@@ -18,7 +18,7 @@ generic module ipP(){
 
 implementation{
 
-    command void IP.buildIP(uint16_t dest){
+    command void IP.buildIP(uint16_t dest, uint8_t protocol){
         uint8_t buffer[28];
         uint16_t next_hop;
         ll_header* ll;
@@ -39,8 +39,7 @@ implementation{
             return;
         }
 
-        // Build IP packet
-        iph = (ip_header*)call LinkLayer.buildLLHeader(PROTOCOL_IP, buffer, next_hop);
+        iph = (ip_header*)call LinkLayer.buildLLHeader(protocol, buffer, next_hop);
         ll = (ll_header*)buffer;
         iph->src = TOS_NODE_ID;
         iph->dest = dest;
@@ -62,23 +61,24 @@ implementation{
         dbg(ROUTING_CHANNEL, "NODE %u: Received IP packet from %u to %u (TTL: %u)\n",
             TOS_NODE_ID, iph->src, iph->dest, iph->TTL);
 
-        // Check if packet is for us
         if(TOS_NODE_ID == iph->dest){
-            dbg(ROUTING_CHANNEL, "NODE %u: Packet arrived at destination\n", TOS_NODE_ID);
+            if(ll->protocol == PROTOCOL_IP){
+                dbg(ROUTING_CHANNEL, "NODE %u: Packet arrived at destination\n", TOS_NODE_ID);
+                call IP.buildIP(iph->src, PROTOCOL_IPACK);
+            }else{
+                dbg(ROUTING_CHANNEL, "NODE %u: ACK received from node %u\n", TOS_NODE_ID, iph->src);
+            }
             return msg;
         }
 
-        // Decrement TTL
         iph->TTL--;
 
-        // Check TTL
         if(iph->TTL <= 0){
             dbg(ROUTING_CHANNEL, "NODE %u: Packet TTL expired, dropping packet from %u to %u\n",
                 TOS_NODE_ID, iph->src, iph->dest);
             return msg;
         }
 
-        // Forward packet - get next hop from routing table
         next_hop = call LinkState.get_next_hop(iph->dest);
 
         if(next_hop == 0 || !call LinkState.has_route_to(iph->dest)){
@@ -90,11 +90,9 @@ implementation{
         dbg(ROUTING_CHANNEL, "NODE %u: Forwarding packet from %u to %u via next hop %u\n",
             TOS_NODE_ID, iph->src, iph->dest, next_hop);
 
-        // Update link layer header for forwarding
         ll->dest = next_hop;
         ll->src = TOS_NODE_ID;
 
-        // Forward the packet
         call Sender.send(*(pack*)payload, ll->dest);
 
         return msg;

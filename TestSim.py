@@ -133,32 +133,32 @@ def main():
     s = TestSim();
     s.t = Tossim([])
     s.runTime(10);
-    s.loadTopo("long_line.topo");
+    s.loadTopo("example.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
-    s.runTime(50);
+    s.runTime(200);
     s.addChannel(s.NEIGHBOR_CHANNEL);
     #s.addChannel(s.FLOODING_CHANNEL);
     s.addChannel(s.ROUTING_CHANNEL);
-    s.runTime(20);
+    s.runTime(200);
     print "\n"
     s.neighborDMP(5);
-    s.runTime(20);
+    s.runTime(100);
     print "\n"
     s.ping(3, 19, "Test 1");
-    s.runTime(20);
-    s.moteOff(5);
     s.runTime(100);
+    s.moteOff(5);
+    s.runTime(500);
     print "\nFlooding Finished \n"
     s.ping(4, 7, "Test 2");
     s.runTime(100);
     print "\n"
     s.neighborDMP(6);
-    s.runTime(20);
+    s.runTime(100);
     s.routeDMP(8);
-    s.runTime(40);
+    s.runTime(100);
     s.ping(15, 7, "test3");
-    s.runTime(40);
+    s.runTime(100);
 
 if __name__ == '__main__':
     main()
