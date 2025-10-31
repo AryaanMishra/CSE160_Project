@@ -146,11 +146,11 @@ def main():
     s.ping(11, 1, "Test 1");
     s.runTime(100);
     s.moteOff(5);
-    s.runTime(200);
+    s.runTime(100);
     s.routeDMP(11);
     s.runTime(100);
     s.ping(11, 1, "Test 2");
-    s.runTime(100);
+    s.runTime(200);
 
 if __name__ == '__main__':
     main()

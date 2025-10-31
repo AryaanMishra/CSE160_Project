@@ -50,23 +50,35 @@ implementation{
         uint32_t* neighbor_keys;
         uint16_t num_active_neighbors;
         uint8_t i;
+        uint8_t packCount = 0;
+        uint8_t curr_entries = 0;
 
 
         // Get neighbor information from NeighborDiscovery module
         neighbor_keys = call ND.getActiveNeighborKeys();
         num_active_neighbors = call ND.getNumActiveNeighbors();
 
-        lsa.num_entries = (num_active_neighbors > 6) ? 6 : num_active_neighbors;
 
-        for(i = 0; i < lsa.num_entries; i++){
-            lsa.entries[i].node = neighbor_keys[i];
+
+        for(i = 0; i < num_active_neighbors; i++){
+            lsa.entries[curr_entries].node = neighbor_keys[i];
             // lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]);
-            lsa.entries[i].cost = 1;
+            lsa.entries[curr_entries].cost = 1;
+            curr_entries++;
+
+            if(curr_entries == 6 || i == num_active_neighbors -1){
+                lsa.num_entries = curr_entries;
+                my_sequence_number++;
+                call Flood.flood_LSA(&lsa, my_sequence_number);
+
+                // Process our own LSA locally to update our adjacency matrix
+                process_LSA_update(&lsa, TOS_NODE_ID, my_sequence_number);
+
+                curr_entries = 0;
+                packCount++;
+            }
         }
 
-        // Increment our sequence number and flood the LSA
-        my_sequence_number++;
-        call Flood.flood_LSA(&lsa, my_sequence_number);
 
         // Start periodic dijkstra if not already running and trigger immediate run
         if(!call spTimer.isRunning()){
@@ -130,7 +142,7 @@ implementation{
     command void LinkState.process_received_LSA(lsa_pack* lsa, uint16_t src_node, uint16_t seq_num) {
 
         if(is_newer_LSA(src_node, seq_num)) {
-
+            // dbg(ROUTING_CHANNEL, "NODE %u: LSA Received From Node %u\n", TOS_NODE_ID, src_node);
             process_LSA_update(lsa, src_node, seq_num);
         }
     }
