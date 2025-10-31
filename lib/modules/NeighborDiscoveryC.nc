@@ -15,6 +15,9 @@ implementation{
     components new TimerMilliC() as neighborTimer;
     NeighborDiscoveryP.neighborTimer -> neighborTimer;
 
+    components new TimerMilliC() as updateTimer;
+    NeighborDiscoveryP.updateTimer -> updateTimer;
+
     components RandomC as Random;
     NeighborDiscoveryP.Random -> Random;    
 

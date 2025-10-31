@@ -13,6 +13,7 @@ generic module NeighborDiscoveryP(){
     provides interface NeighborDiscovery;
 
     uses interface Timer<TMilli> as neighborTimer;
+    uses interface Timer<TMilli> as updateTimer;
     uses interface Random;
     uses interface SimpleSend as Sender;
     uses interface Hashmap<table>;
@@ -24,7 +25,7 @@ implementation {
     uint32_t sequenceNum = 0;
     table t;
     bool isSteady = FALSE;
-
+    void updateActive();
     command void NeighborDiscovery.setSteady(){
         isSteady = TRUE;
         dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
@@ -34,9 +35,14 @@ implementation {
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
-        call neighborTimer.startPeriodic(300000+ (call Random.rand16() % 300));
+        call neighborTimer.startPeriodic(30000+ (call Random.rand16() % 300));
+        call updateTimer.startPeriodic(50000+ (call Random.rand16() % 300));
     }
 
+
+    event void updateTimer.fired(){
+        updateActive();
+    }
 // Broadcasts a package from the source node to all neighbors
     void ping(uint16_t destination, uint8_t *payload){
         uint8_t buffer[28];

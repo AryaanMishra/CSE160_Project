@@ -133,7 +133,7 @@ def main():
     s = TestSim();
     s.t = Tossim([])
     s.runTime(10);
-    s.loadTopo("example.topo");
+    s.loadTopo("partial_hub.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
     s.runTime(200);
@@ -141,23 +141,15 @@ def main():
     #s.addChannel(s.FLOODING_CHANNEL);
     s.addChannel(s.ROUTING_CHANNEL);
     s.runTime(200);
-    print "\n"
-    s.neighborDMP(5);
+    s.routeDMP(11);
     s.runTime(100);
-    print "\n"
-    s.ping(3, 19, "Test 1");
+    s.ping(11, 1, "Test 1");
     s.runTime(100);
     s.moteOff(5);
-    s.runTime(500);
-    print "\nFlooding Finished \n"
-    s.ping(4, 7, "Test 2");
+    s.runTime(200);
+    s.routeDMP(11);
     s.runTime(100);
-    print "\n"
-    s.neighborDMP(6);
-    s.runTime(100);
-    s.routeDMP(8);
-    s.runTime(100);
-    s.ping(15, 7, "test3");
+    s.ping(11, 1, "Test 2");
     s.runTime(100);
 
 if __name__ == '__main__':

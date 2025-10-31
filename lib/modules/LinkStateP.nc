@@ -60,7 +60,8 @@ implementation{
 
         for(i = 0; i < lsa.num_entries; i++){
             lsa.entries[i].node = neighbor_keys[i];
-            lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]);
+            // lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]);
+            lsa.entries[i].cost = 1;
         }
 
         // Increment our sequence number and flood the LSA
@@ -107,8 +108,14 @@ implementation{
         cache_entry.timestamp = 0;
         call LSACache.insert(source_node, cache_entry);
 
-        //Create Adjacency Matrix
+        // Clear all existing edges from this node before adding new ones
+        // This ensures that if a neighbor went down, the old edge is removed
+        for(i = 0; i < 20; i++){
+            adj[source_node][i] = 0;
+            adj[i][source_node] = 0;
+        }
 
+        //Create Adjacency Matrix with current neighbors
         for (i = 0; i < lsa->num_entries; i++) {
             addEdge(source_node, lsa->entries[i].node, lsa->entries[i].cost);
         }
