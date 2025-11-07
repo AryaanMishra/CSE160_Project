@@ -133,23 +133,28 @@ def main():
     s = TestSim();
     s.t = Tossim([])
     s.runTime(10);
-    s.loadTopo("partial_hub.topo");
+    s.loadTopo("long_line.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
     s.runTime(200);
     s.addChannel(s.NEIGHBOR_CHANNEL);
     #s.addChannel(s.FLOODING_CHANNEL);
     s.addChannel(s.ROUTING_CHANNEL);
+    s.runTime(100);
+    print "\nRoute Dump\n"
+    s.routeDMP(4);
+    s.runTime(100);
+    print "\nPing Test 1\n"
+    s.ping(16, 4, "Test 1");
+    s.runTime(100);
+    print "\nMote Off\n"
+    s.moteOff(9);
     s.runTime(200);
-    s.routeDMP(11);
-    s.runTime(100);
-    s.ping(11, 1, "Test 1");
-    s.runTime(100);
-    s.moteOff(5);
-    s.runTime(100);
-    s.routeDMP(11);
-    s.runTime(100);
-    s.ping(11, 1, "Test 2");
+    print "\nPing Test 2\n"
+    s.ping(5, 10, "Test 2");
+    s.runTime(200);
+    print "\nRoute Dump 2\n"
+    s.routeDMP(7);
     s.runTime(200);
 
 if __name__ == '__main__':

@@ -237,7 +237,7 @@ implementation{
                     route.next_hop = node;
                     route.cost = dist[i];
                     call RoutingTable.insert(i, route);
-                    routes_added++;
+                    routes_added++; 
                 }
             }
         }

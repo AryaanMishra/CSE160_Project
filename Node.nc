@@ -13,6 +13,7 @@
 #include "includes/sendInfo.h"
 #include "includes/channels.h"
 #include "includes/protocol.h"
+#include "includes/socket.h"
 
 module Node{
    uses interface Boot;
