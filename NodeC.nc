@@ -16,25 +16,50 @@ configuration NodeC{
 implementation {
     components MainC;
     components Node;
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
 
     Node -> MainC.Boot;
 
-    Node.Receive -> GeneralReceive;
 
     components ActiveMessageC;
     Node.AMControl -> ActiveMessageC;
 
+    components new TimerMilliC() as steadyTimer;
+    Node.steadyTimer -> steadyTimer;
+
+
     components new SimpleSendC(AM_PACK);
     Node.Sender -> SimpleSendC;
 
-    components new NeighborDiscoveryC(AM_PACK);
-    Node.Neighbor -> NeighborDiscoveryC;
+    components new NeighborDiscoveryC(AM_PACK) as NeighborDiscovery;
+    Node.Neighbor -> NeighborDiscovery;
 
-    components new FloodingC();
-    Node.Flooding -> FloodingC;
+    components new FloodingC() as Flooding;
+    Node.Flooding -> Flooding;
+
+    components new ipC() as IP;
+    Node.IP -> IP;
+
+    components new LinkStateC() as LinkState;
+    Node.LinkState -> LinkState;
+    LinkState.ND -> NeighborDiscovery;
+    LinkState.Flood -> Flooding;
+    NeighborDiscovery.LinkState -> LinkState;
 
     components CommandHandlerC;
     Node.CommandHandler -> CommandHandlerC;
+
+    components new LinkLayerC();
+    Node.LinkLayer -> LinkLayerC;
+    LinkLayerC.ND -> NeighborDiscovery;
+    LinkLayerC.Flood -> Flooding;
+    LinkLayerC.IP -> IP;
+
+    NeighborDiscovery.LinkLayer -> LinkLayerC;
+    Flooding.LinkLayer -> LinkLayerC;
+    Flooding.LinkState -> LinkState;
+
+    IP.LinkLayer -> LinkLayerC;
+    IP.LinkState -> LinkState;
+    IP.Sender -> SimpleSendC;
 
 }

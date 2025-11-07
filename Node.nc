@@ -12,13 +12,13 @@
 #include "includes/CommandMsg.h"
 #include "includes/sendInfo.h"
 #include "includes/channels.h"
+#include "includes/protocol.h"
+#include "includes/socket.h"
 
 module Node{
    uses interface Boot;
 
    uses interface SplitControl as AMControl;
-   
-   uses interface Receive;
 
    uses interface SimpleSend as Sender;
 
@@ -28,10 +28,20 @@ module Node{
 
    uses interface Flooding;
 
+   uses interface LinkLayer;
+
+   uses interface LinkState;
+
+   uses interface IP as IP;
+
+   uses interface Timer<TMilli> as steadyTimer;
+
+
 }
 
 implementation{
    pack sendPackage;
+
    // Prototype (used by other handlers in this module)
    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 
@@ -40,8 +50,15 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, 0, 0, 0, "hello", PACKET_MAX_PAYLOAD_SIZE);
+      call steadyTimer.startOneShot(100000);
+
    }
+
+   event void steadyTimer.fired(){
+      call Neighbor.setSteady();
+   }
+
+
 
    event void AMControl.startDone(error_t err){
       if(err == SUCCESS){
@@ -54,35 +71,32 @@ implementation{
 
    event void AMControl.stopDone(error_t err){}
 
-   event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
-      //dbg(GENERAL_CHANNEL, "Packet Received\n");
-      if(len==sizeof(pack)){
-       pack* myMsg=(pack*) payload;
-       dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
-       // Delegate flooding/forwarding handling to Flooding component
-       // FloodingP provides a Receive interface and will be wired to the same AM receiver; Node need not handle forwarding here.
-       return msg;
-      }
-      //dbg(GENERAL_CHANNEL, "Unknown Packet Type %d\n", len);
-      return msg;
-   }
 
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload){
-      //dbg(GENERAL_CHANNEL, "PING EVENT \n");
-      makePack(&sendPackage, TOS_NODE_ID, destination, 0, 0, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-      call Flooding.flood();
+      dbg(GENERAL_CHANNEL, "PING EVENT: Node %d trying to ping %d\n", TOS_NODE_ID, destination);
+      // Implement proper ping via IP layer
+      // For now, just log the ping request
+      dbg(GENERAL_CHANNEL, "Ping functionality not yet implemented\n");
+      call IP.buildIP(destination, PROTOCOL_IP);
    }
 
    
 
    event void CommandHandler.printNeighbors(){
       call Neighbor.printNeighbors();
+      
+      // Also trigger LSA generation to test LinkState
+      dbg(ROUTING_CHANNEL, "Triggering LSA generation for Node %d\n", TOS_NODE_ID);
+      call LinkState.build_and_flood_LSA();
    }
 
-   event void CommandHandler.printRouteTable(){}
+   event void CommandHandler.printRouteTable(){
+      call LinkState.printRoute();
+   }
 
-   event void CommandHandler.printLinkState(){}
+   event void CommandHandler.printLinkState(){
+   }
 
    event void CommandHandler.printDistanceVector(){}
 
@@ -94,12 +108,4 @@ implementation{
 
    event void CommandHandler.setAppClient(){}
 
-   void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
-      Package->src = src;
-      Package->dest = dest;
-      Package->TTL = TTL;
-      Package->seq = seq;
-      Package->protocol = protocol;
-      memcpy(Package->payload, payload, length);
-   }
 }

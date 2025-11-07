@@ -3,14 +3,13 @@
 
 generic configuration FloodingC(){
     provides interface Flooding;
+    uses interface LinkLayer;
+    uses interface LinkState;
 }
 
 implementation{
     components new FloodingP();
     Flooding = FloodingP.Flooding;
-
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
-    FloodingP.Receive -> GeneralReceive;
 
     components new SimpleSendC(AM_PACK);
     FloodingP.Sender -> SimpleSendC;
@@ -21,5 +20,8 @@ implementation{
     
     components new HashmapC(uint16_t, 20);
     FloodingP.Hashmap -> HashmapC;
+
+    FloodingP.LinkLayer = LinkLayer;
+    FloodingP.LinkState = LinkState;
 
 }
