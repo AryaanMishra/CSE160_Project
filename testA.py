@@ -1,4 +1,5 @@
 from TestSim import TestSim
+    
 
 def main():
     # Get simulation ready to run.
@@ -8,7 +9,7 @@ def main():
     s.runTime(1);
 
     # Load the the layout of the network.
-    s.loadTopo("tuna-melt.topo");
+    s.loadTopo("long_line.topo");
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt");
@@ -24,10 +25,10 @@ def main():
     # After sending a ping, simulate a little to prevent collision.
 
     s.runTime(300);
-    s.testServer(1);
+    s.testServer(1, 100);
     s.runTime(60);
 
-    s.testClient(4);
+    s.testClient(4, 1, 20, 100, "BRUHTHER");
     s.runTime(1);
     s.runTime(1000);
 

@@ -20,9 +20,9 @@ generic module FloodingP(){
 implementation{
     uint32_t sequenceNum = 0;
 
-    command void Flooding.flood(lsa_pack* payload){
+    command void Flooding.flood(lsa_pack* payload, uint8_t protocol){
         uint8_t buffer[28];
-        flood_header* fh = (flood_header*)call LinkLayer.buildLLHeader(PROTOCOL_FLOODING, buffer, AM_BROADCAST_ADDR);
+        flood_header* fh = (flood_header*)call LinkLayer.buildLLHeader(protocol, buffer, AM_BROADCAST_ADDR);
         lsa_pack* lsa_ptr;
         
         // Safety check for NULL payload
@@ -45,37 +45,13 @@ implementation{
         dbg(FLOODING_CHANNEL, "NODE %u: STARTED FLOODING, Sequence: %u\n", TOS_NODE_ID, sequenceNum);
     }
 
-    command void Flooding.flood_LSA(lsa_pack* lsa_payload, uint16_t sequence_number){
-        uint8_t buffer[28];
-        flood_header* fh;
-        lsa_pack* lsa_ptr;
-
-        //Build Flood header with LSA protocol
-        fh = (flood_header*)call LinkLayer.buildLLHeader(PROTOCOL_LSA, buffer, AM_BROADCAST_ADDR);
-
-        // Set Flood header fields
-        fh->flood_src = TOS_NODE_ID;
-        fh->seq = sequence_number;
-        fh->TTL = 30;
-
-        // Copy LSA payload into the packet
-        lsa_ptr = (lsa_pack*)fh->payload;
-        *lsa_ptr = *lsa_payload;
-
-        //update flood cache
-        call Hashmap.insert(TOS_NODE_ID, sequence_number);
-        //send the packet
-        call Sender.send(*(pack*)&buffer, AM_BROADCAST_ADDR);
-        dbg(FLOODING_CHANNEL, "NODE %u: FLOODED LSA, Sequence: %u\n", TOS_NODE_ID, sequence_number);
-    }
-
     command message_t* Flooding.floodReceive(message_t* msg, void* payload, uint8_t len, uint8_t protocol){
         if(len==sizeof(pack)){
             ll_header* ll = (ll_header*)payload;// Get Link Layer header first
             
             // Handle regular flooding packets
             flood_header* myMsg = (flood_header*)ll->payload;
-            myMsg->TTL--;
+            myMsg->TTL -= 1;
             if(myMsg->TTL <= 0){
                 return msg;
             }

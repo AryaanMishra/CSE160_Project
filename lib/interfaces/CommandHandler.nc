@@ -5,8 +5,8 @@ interface CommandHandler{
    event void printRouteTable();
    event void printLinkState();
    event void printDistanceVector();
-   event void setTestServer();
-   event void setTestClient();
+   event void setTestServer(socket_port_t port);
+   event void setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer);
    event void setAppServer();
    event void setAppClient();
 }

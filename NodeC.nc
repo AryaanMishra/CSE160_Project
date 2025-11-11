@@ -39,6 +39,9 @@ implementation {
     components new ipC() as IP;
     Node.IP -> IP;
 
+    components new TransportC() as Transport;
+    Node.Transport -> Transport;
+
     components new LinkStateC() as LinkState;
     Node.LinkState -> LinkState;
     LinkState.ND -> NeighborDiscovery;

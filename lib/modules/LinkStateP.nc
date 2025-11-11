@@ -62,14 +62,13 @@ implementation{
 
         for(i = 0; i < num_active_neighbors; i++){
             lsa.entries[curr_entries].node = neighbor_keys[i];
-            // lsa.entries[i].cost = call ND.getNeighborCost(neighbor_keys[i]);
             lsa.entries[curr_entries].cost = 1;
             curr_entries++;
 
             if(curr_entries == 6 || i == num_active_neighbors -1){
                 lsa.num_entries = curr_entries;
                 my_sequence_number++;
-                call Flood.flood_LSA(&lsa, my_sequence_number);
+                call Flood.flood(&lsa, PROTOCOL_LSA);
 
                 // Process our own LSA locally to update our adjacency matrix
                 process_LSA_update(&lsa, TOS_NODE_ID, my_sequence_number);
@@ -107,7 +106,6 @@ implementation{
 
     void process_LSA_update(lsa_pack* lsa, uint16_t source_node, uint16_t seq_num) {
         lsa_cache_entry_t cache_entry;
-        lsa_pack stored_lsa;
         uint8_t i;
 
         // Initialize adjacency matrix if not done yet

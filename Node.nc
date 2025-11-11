@@ -34,6 +34,8 @@ module Node{
 
    uses interface IP as IP;
 
+   uses interface Transport as Transport;
+
    uses interface Timer<TMilli> as steadyTimer;
 
 
@@ -51,6 +53,7 @@ implementation{
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
       call steadyTimer.startOneShot(100000);
+      call Transport.initializeSockets();
 
    }
 
@@ -100,9 +103,13 @@ implementation{
 
    event void CommandHandler.printDistanceVector(){}
 
-   event void CommandHandler.setTestServer(){}
+   event void CommandHandler.setTestServer(socket_port_t port){
+      dbg(TRANSPORT_CHANNEL, "NODE %u OPENING PORT: %u\n", TOS_NODE_ID, port);
+   }
 
-   event void CommandHandler.setTestClient(){}
+   event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
+      dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u", TOS_NODE_ID, dest, srcPort, destPort);
+   }
 
    event void CommandHandler.setAppServer(){}
 

@@ -71,7 +71,7 @@ implementation{
             return msg;
         }
 
-        iph->TTL--;
+        iph->TTL -= 1;
 
         if(iph->TTL <= 0){
             dbg(ROUTING_CHANNEL, "NODE %u: Packet TTL expired, dropping packet from %u to %u\n",
