@@ -108,7 +108,7 @@ implementation{
    }
 
    event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
-      dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u", TOS_NODE_ID, dest, srcPort, destPort);
+      dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, dest, srcPort, destPort);
    }
 
    event void CommandHandler.setAppServer(){}
