@@ -128,7 +128,6 @@ implementation{
 
       //READ DATA HERE
 
-      dbg(TRANSPORT_CHANNEL, "Socket %u did not accept new connections\n", fd);
    }
 
    event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
@@ -146,6 +145,21 @@ implementation{
       call Transport.bind(fd, &src_addr);
 
       call Transport.connect(fd, &dest_addr);
+   }
+
+   event void CommandHandler.clientClose(uint16_t dest, socket_port_t srcPort, socket_port_t destPort){
+      error_t status;
+      socket_t client_fd = call Transport.findFD(destPort, dest);
+      if(client_fd != NULL_SOCKET){
+         status = call Transport.close(client_fd);
+         if(status == SUCCESS){
+            dbg(TRANSPORT_CHANNEL, "CLIENT IS CLOSING\n");
+         }
+         else{
+            dbg(TRANSPORT_CHANNEL, "CLIENT FAILED TO CLOSE\n");
+         }
+      }
+      
    }
 
    event void CommandHandler.setAppServer(){}

@@ -33,6 +33,12 @@ def main():
     s.runTime(1);
     s.runTime(1000);
 
+    s.clientClose(4, 1, 20, 100);
+    s.runTime(500);
+
+    s.clientClose(1, 4, 100, 20);
+    s.runTime(300);
+
 
 
 if __name__ == '__main__':
