@@ -61,7 +61,7 @@ implementation{
                         call Hashmap.insert(myMsg->flood_src, myMsg->seq);
                         dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                         call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
-                        if(protocol == PROTOCOL_LSA){
+                        if(protocol == PROTOCOL_LINKSTATE){
                             call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src, myMsg->seq);
                         }
                     } else{
@@ -72,7 +72,7 @@ implementation{
                     call Hashmap.insert(myMsg->flood_src, myMsg->seq);
                     call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
                     dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
-                    if(protocol == PROTOCOL_LSA){
+                    if(protocol == PROTOCOL_LINKSTATE){
                         call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src, myMsg->seq);
                     }
                 }

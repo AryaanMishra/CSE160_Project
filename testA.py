@@ -28,7 +28,7 @@ def main():
     s.testServer(1, 100);
     s.runTime(60);
 
-    s.testClient(4, 1, 20, 100, "BRUHTHER");
+    s.testClient(4, 1, 20, 100, 50);
     s.runTime(1);
     s.runTime(1000);
 

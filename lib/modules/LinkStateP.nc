@@ -68,7 +68,7 @@ implementation{
             if(curr_entries == 6 || i == num_active_neighbors -1){
                 lsa.num_entries = curr_entries;
                 my_sequence_number++;
-                call Flood.flood(&lsa, PROTOCOL_LSA);
+                call Flood.flood(&lsa, PROTOCOL_LINKSTATE);
 
                 // Process our own LSA locally to update our adjacency matrix
                 process_LSA_update(&lsa, TOS_NODE_ID, my_sequence_number);

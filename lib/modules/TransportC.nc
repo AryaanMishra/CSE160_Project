@@ -7,4 +7,8 @@ generic configuration TransportC(){
 implementation{
     components new TransportP();
     Transport = TransportP.Transport;
+
+
+    components new QueueC(tcp_payload_t, 20) as connectionQueue;
+    TransportP.connectionQueue -> connectionQueue;
 }

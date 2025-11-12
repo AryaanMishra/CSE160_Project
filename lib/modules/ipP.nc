@@ -64,9 +64,6 @@ implementation{
         if(TOS_NODE_ID == iph->dest){
             if(ll->protocol == PROTOCOL_IP){
                 dbg(ROUTING_CHANNEL, "NODE %u: Packet arrived at destination\n", TOS_NODE_ID);
-                call IP.buildIP(iph->src, PROTOCOL_IPACK);
-            }else{
-                dbg(ROUTING_CHANNEL, "NODE %u: ACK received from node %u\n", TOS_NODE_ID, iph->src);
             }
             return msg;
         }

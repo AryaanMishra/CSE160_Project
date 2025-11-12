@@ -26,6 +26,9 @@ implementation {
     components new TimerMilliC() as steadyTimer;
     Node.steadyTimer -> steadyTimer;
 
+    components new TimerMilliC() as connectionTimer;
+    Node.connectionTimer -> connectionTimer;
+
 
     components new SimpleSendC(AM_PACK);
     Node.Sender -> SimpleSendC;
@@ -64,5 +67,8 @@ implementation {
     IP.LinkLayer -> LinkLayerC;
     IP.LinkState -> LinkState;
     IP.Sender -> SimpleSendC;
+
+    components new HashmapC(bool, 20) as currConnections;
+    Node.currConnections -> currConnections;
 
 }

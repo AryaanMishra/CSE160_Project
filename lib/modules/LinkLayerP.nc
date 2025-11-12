@@ -36,10 +36,10 @@ implementation{
             if(ll->protocol == PROTOCOL_PING || ll->protocol == PROTOCOL_PINGREPLY){
                 call ND.neighborReceive(msg, payload, len);
             }
-            else if(ll->protocol == PROTOCOL_FLOODING || ll->protocol == PROTOCOL_LSA){
+            else if(ll->protocol == PROTOCOL_FLOODING || ll->protocol == PROTOCOL_LINKSTATE){
                 call Flood.floodReceive(msg, payload, len, ll->protocol);
             }
-            else if(ll->protocol == PROTOCOL_IP || ll->protocol == PROTOCOL_IPACK){
+            else if(ll->protocol == PROTOCOL_IP){
                 call IP.ipRecieve(msg, payload, len, ll->protocol);
             }
 

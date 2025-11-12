@@ -38,11 +38,14 @@ module Node{
 
    uses interface Timer<TMilli> as steadyTimer;
 
+   uses interface Hashmap<bool> as currConnections;
 
+   uses interface Timer<TMilli> as connectionTimer;
 }
 
 implementation{
    pack sendPackage;
+   socket_t fd;
 
    // Prototype (used by other handlers in this module)
    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t *payload, uint8_t length);
@@ -104,11 +107,31 @@ implementation{
    event void CommandHandler.printDistanceVector(){}
 
    event void CommandHandler.setTestServer(socket_port_t port){
+      socket_addr_t addr;
       dbg(TRANSPORT_CHANNEL, "NODE %u OPENING PORT: %u\n", TOS_NODE_ID, port);
+      fd = call Transport.socket();
+      addr.addr = TOS_NODE_ID;
+      addr.port = port;
+      call Transport.bind(fd, &addr);
+      call Transport.listen(fd);
+      call connectionTimer.startPeriodic(300000);
+   }
+
+   event void connectionTimer.fired(){
+      socket_t newFd = call Transport.accept(fd);
+
+      if(newFd != NULL_SOCKET){
+         dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
+         call currConnections.insert(newFd, TRUE);
+      }
+
+      //READ DATA HERE
+
+      dbg(TRANSPORT_CHANNEL, "Socket %u did not accept new connections\n", fd);
    }
 
    event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
-      dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, dest, srcPort, destPort);
+      dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
    }
 
    event void CommandHandler.setAppServer(){}
