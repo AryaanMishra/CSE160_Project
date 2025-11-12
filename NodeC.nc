@@ -44,6 +44,7 @@ implementation {
 
     components new TransportC() as Transport;
     Node.Transport -> Transport;
+    Transport.IP -> IP;
 
     components new LinkStateC() as LinkState;
     Node.LinkState -> LinkState;
@@ -67,6 +68,7 @@ implementation {
     IP.LinkLayer -> LinkLayerC;
     IP.LinkState -> LinkState;
     IP.Sender -> SimpleSendC;
+    IP.Transport -> Transport;
 
     components new HashmapC(bool, 20) as currConnections;
     Node.currConnections -> currConnections;

@@ -39,7 +39,7 @@ implementation{
             else if(ll->protocol == PROTOCOL_FLOODING || ll->protocol == PROTOCOL_LINKSTATE){
                 call Flood.floodReceive(msg, payload, len, ll->protocol);
             }
-            else if(ll->protocol == PROTOCOL_IP){
+            else if(ll->protocol == PROTOCOL_IP || ll->protocol == PROTOCOL_TCP){
                 call IP.ipRecieve(msg, payload, len, ll->protocol);
             }
 

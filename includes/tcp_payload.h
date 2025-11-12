@@ -1,6 +1,7 @@
 #ifndef TCP_PAYLOAD_H
 #define TCP_PAYLOAD_H
 
+
 enum{
     HANDSHAKE_PAYLOAD_SIZE = 18,
     ACK = 0,
@@ -10,7 +11,7 @@ enum{
 };
 
 typedef struct tcp_payload_t{
-    uint8_t flags;
+    nx_uint8_t flags;
     uint16_t seq;
     nx_socket_port_t destPort;
     nx_socket_port_t srcPort;

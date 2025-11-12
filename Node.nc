@@ -14,6 +14,7 @@
 #include "includes/channels.h"
 #include "includes/protocol.h"
 #include "includes/socket.h"
+#include "includes/tcp_payload.h"
 
 module Node{
    uses interface Boot;
@@ -84,7 +85,7 @@ implementation{
       // Implement proper ping via IP layer
       // For now, just log the ping request
       dbg(GENERAL_CHANNEL, "Ping functionality not yet implemented\n");
-      call IP.buildIP(destination, PROTOCOL_IP);
+      call IP.buildIP(destination, PROTOCOL_IP, (tcp_payload_t*)payload);
    }
 
    
@@ -131,7 +132,20 @@ implementation{
    }
 
    event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
+      socket_addr_t src_addr;
+      socket_addr_t dest_addr;
       dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
+
+      src_addr.addr = TOS_NODE_ID;
+      src_addr.port = srcPort;
+
+      dest_addr.addr = dest;
+      dest_addr.port = destPort;
+      
+      fd = call Transport.socket();
+      call Transport.bind(fd, &src_addr);
+
+      call Transport.connect(fd, &dest_addr);
    }
 
    event void CommandHandler.setAppServer(){}
