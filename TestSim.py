@@ -131,22 +131,31 @@ class TestSim:
 
 def main():
     s = TestSim();
+    s.t = Tossim([])
     s.runTime(10);
     s.loadTopo("long_line.topo");
     s.loadNoise("no_noise.txt");
     s.bootAll();
-    s.addChannel(s.COMMAND_CHANNEL);
-    s.addChannel(s.GENERAL_CHANNEL);
+    s.runTime(200);
     s.addChannel(s.NEIGHBOR_CHANNEL);
-    s.addChannel(s.FLOODING_CHANNEL);
+    #s.addChannel(s.FLOODING_CHANNEL);
+    s.addChannel(s.ROUTING_CHANNEL);
+    s.runTime(100);
+    print "\nRoute Dump\n"
+    s.routeDMP(4);
+    s.runTime(100);
+    print "\nPing Test 1\n"
+    s.ping(16, 4, "Test 1");
+    s.runTime(100);
+    print "\nMote Off\n"
+    s.moteOff(9);
+    s.runTime(200);
+    print "\nPing Test 2\n"
+    s.ping(5, 10, "Test 2");
+    s.runTime(200);
+    print "\nRoute Dump 2\n"
+    s.routeDMP(7);
+    s.runTime(200);
 
-    s.runTime(20);
-    s.ping(1, 2, "Hello, World");
-    s.runTime(10);
-    s.ping(1, 3, "Hi!");
-    s.runTime(20);
-    s.neighborDMP(1);
-    s.runTime(20);
-    
 if __name__ == '__main__':
     main()
