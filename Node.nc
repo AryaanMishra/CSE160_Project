@@ -36,6 +36,8 @@ module Node{
 
    uses interface Timer<TMilli> as steadyTimer;
 
+   uses interface Transport;
+
 
 }
 
