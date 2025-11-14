@@ -62,7 +62,11 @@ implementation {
     IP.LinkState -> LinkState;
     IP.Sender -> SimpleSendC;
 
+<<<<<<< HEAD
     components TransportC;
+=======
+    components new TransportC() as Transport;
+>>>>>>> 04eaa24aae3f71d24f7c1c3dc07b9343b245b8d2
     Node.Transport -> TransportC;
 
 }

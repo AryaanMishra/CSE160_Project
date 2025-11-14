@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include "../../includes/transport_header.h"
 #include "../../includes/packet.h"
 
@@ -32,3 +33,20 @@ implementation {
     TransportP.RetransmitTimer[8] -> Timer8;
     TransportP.RetransmitTimer[9] -> Timer9;
 }
+=======
+configuration TransportC {
+    provides interface Transport;
+}
+implementation {
+    components TransportP;
+    components new SimpleSendC(AM_PACK) as SimpleSend;
+    components new TimerMilliC() as RetransmitTimer0;
+    components new TimerMilliC() as RetransmitTimer1;
+    
+    Transport = TransportP.Transport;
+    
+    TransportP.SimpleSend -> SimpleSend;
+    TransportP.RetransmitTimer0 -> RetransmitTimer0;
+    TransportP.RetransmitTimer1 -> RetransmitTimer1;
+}
+>>>>>>> 04eaa24aae3f71d24f7c1c3dc07b9343b245b8d2
