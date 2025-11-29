@@ -63,7 +63,9 @@ implementation{
                         sockets[newFd].dest.addr = newConn.src;
                         sockets[newFd].dest.port = newConn.payload.srcPort;
                         sockets[newFd].state = SYN_RCVD;
-                        makePack(&p, SYN, 1, 0, sockets[newFd].dest.port, sockets[newFd].src, sockets[newFd].effectiveWindow);
+                        sockets[newFd].nextExpected = newConn.payload.seq + 1;
+                        sockets[newFd].effectiveWindow = SOCKET_BUFFER_SIZE;
+                        makePack(&p, SYN, 1, newConn.payload.seq, sockets[newFd].dest.port, sockets[newFd].src, sockets[newFd].effectiveWindow);
                         call IP.buildIP(sockets[newFd].dest.addr, PROTOCOL_TCP, &p);
                     }
                 }
@@ -74,12 +76,13 @@ implementation{
 
 
     command uint16_t Transport.write(socket_t fd, uint8_t *buff, uint16_t bufflen){
+        //MIGHT NOT BE WORKING
         uint8_t i = sockets[fd].lastWritten;
         uint8_t next;
         uint8_t j = 0;
 
         if(sockets[fd].flag == 0 || sockets[fd].state != ESTABLISHED){
-            dbg(TRANSPORT_CHANNEL, "UNABLE TO WRITE\n");
+            //dbg(TRANSPORT_CHANNEL, "UNABLE TO WRITE\n");
             return 0;
         }
 
@@ -89,9 +92,6 @@ implementation{
                 next = 0;
             }
             if(next == sockets[fd].lastAck){
-                sockets[fd].sendBuff[i] = buff[j]; 
-                dbg(TRANSPORT_CHANNEL, "NODE %u Port %u wrote %u at pos %u\n", TOS_NODE_ID, sockets[fd].src, sockets[fd].sendBuff[i], i);
-                j++;
                 break;
             }
             sockets[fd].sendBuff[i] = buff[j]; 
@@ -106,6 +106,7 @@ implementation{
 
     command error_t Transport.receive(tcp_payload_t* package, uint16_t src_addr){
         socket_t fd = call Transport.findFD(package->srcPort, src_addr);
+        uint8_t new_seq
         if(fd != NULL_SOCKET){
             if(package->ack == 1){
                 if(package->flags == SYN && sockets[fd].state == SYN_SENT){
@@ -113,12 +114,17 @@ implementation{
                     dbg(TRANSPORT_CHANNEL, "NODE %u received SYN+ACK from NODE %u PORT %u, moving to ESTABLISHED\n", TOS_NODE_ID, src_addr, package->srcPort);
                     sockets[fd].state = ESTABLISHED;
                     sockets[fd].effectiveWindow = package->window;
-                    makePack(&p, NONE, 1, package->seq, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow);
+                    if(package->seq == 256){
+                        new_seq = 0;
+                    } else {
+                        new_seq = package->seq + 1;
+                    }
+                    makePack(&p, NONE, 1, new_seq, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow);
                     call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
                     call send_timer.startPeriodic(3000 + (call Random.rand16()%500));
                     return SUCCESS;
                 }
-                else if(sockets[fd].state == SYN_RCVD){
+                else if(sockets[fd].state == SYN_RCVD && sockets[fd].nextExpected == package->seq){
                     //SIGNAL ESTABLISHED EVENT
                     dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received from NODE %u PORT %u, moving to ESTABLISHED\n", TOS_NODE_ID, src_addr, package->srcPort);
                     sockets[fd].state = ESTABLISHED;
@@ -161,6 +167,8 @@ implementation{
     command uint16_t Transport.read(socket_t fd, uint8_t *buff, uint16_t bufflen){}
 
     command error_t Transport.connect(socket_t fd, socket_addr_t * addr){
+        uint8_t seq = call Random.rand16() % 255;
+        dbg(TRANSPORT_CHANNEL, "ISN of %u\n", seq);
         makePack(&p, SYN, 0, 0, addr->port, sockets[fd].src, sockets[fd].effectiveWindow);
         dbg(TRANSPORT_CHANNEL, "Transport.connect: building SYN payload\n");
         sockets[fd].dest.addr = addr->addr;
@@ -213,7 +221,12 @@ implementation{
         return FAIL;
     }
 
+    task void build_and_send(){
+
+    }
+
     event void send_timer.fired(){
+        post build_and_send();
     }
 
     event void timer_wait.fired(){
