@@ -59,4 +59,12 @@ typedef struct socket_store_t{
     uint8_t effectiveWindow;
 }socket_store_t;
 
+typedef struct active_socket_t{
+    uint16_t buff[SOCKET_BUFFER_SIZE];
+    uint16_t transfer;
+    uint16_t written;
+    uint16_t curr;
+    bool isActive;
+}active_socket_t;
+
 #endif

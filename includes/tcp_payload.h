@@ -4,19 +4,25 @@
 
 enum{
     HANDSHAKE_PAYLOAD_SIZE = 18,
-    ACK = 0,
-    SYN = 1,
-    SYN_ACK = 2,
-    FIN = 3,
+    SYN = 0,
+    FIN = 1,
+    NONE = 2,
 };
+
 
 typedef struct tcp_payload_t{
     nx_uint8_t flags;
+    uint8_t ack;
     uint16_t seq;
     nx_socket_port_t destPort;
     nx_socket_port_t srcPort;
-    uint16_t src_addr;
-    uint8_t payload[12];
+    uint8_t window;
+    uint8_t payload[10];
 } tcp_payload_t;
+
+typedef struct new_conn_t{
+    tcp_payload_t payload;
+    uint16_t src;
+} new_conn_t;
 
 #endif

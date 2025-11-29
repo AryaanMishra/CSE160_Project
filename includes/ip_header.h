@@ -2,7 +2,7 @@
 #define IPHEADER_H
 
 enum{
-    IP_HEADER_LENGTH = 5
+    IP_HEADER_LENGTH = 6
 };
 
 typedef nx_struct ip_header{

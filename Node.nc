@@ -41,12 +41,17 @@ module Node{
 
    uses interface Hashmap<bool> as currConnections;
 
-   uses interface Timer<TMilli> as connectionTimer;
+   uses interface Timer<TMilli> as server_connection_timer;
+
+   uses interface Timer<TMilli> as client_write_timer;
+
+	uses interface Random;
 }
 
 implementation{
    pack sendPackage;
    socket_t fd;
+   active_socket_t sockets[10];
 
    // Prototype (used by other handlers in this module)
    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t *payload, uint8_t length);
@@ -56,7 +61,7 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      call steadyTimer.startOneShot(100000);
+      call steadyTimer.startOneShot(100000 + (call Random.rand16()%300));
       call Transport.initializeSockets();
 
    }
@@ -115,10 +120,10 @@ implementation{
       addr.port = port;
       call Transport.bind(fd, &addr);
       call Transport.listen(fd);
-      call connectionTimer.startPeriodic(300000);
+      call server_connection_timer.startPeriodic(300000 + (call Random.rand16()%300));
    }
 
-   event void connectionTimer.fired(){
+   event void server_connection_timer.fired(){
       socket_t newFd = call Transport.accept(fd);
 
       if(newFd != NULL_SOCKET){
@@ -130,9 +135,23 @@ implementation{
 
    }
 
+   void build_buff(socket_t d){
+      uint8_t i;
+      sockets[d].written = 0;
+      for(i = 0; i < SOCKET_BUFFER_SIZE; i++){
+         if(sockets[d].curr < sockets[d].transfer){
+            sockets[d].buff[i] = ++sockets[d].curr;
+            dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+         } else {
+            break;
+         }
+      }
+   }
+
    event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
       socket_addr_t src_addr;
       socket_addr_t dest_addr;
+      uint16_t* t = (uint16_t *)transfer;
       dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
 
       src_addr.addr = TOS_NODE_ID;
@@ -142,10 +161,46 @@ implementation{
       dest_addr.port = destPort;
       
       fd = call Transport.socket();
-      call Transport.bind(fd, &src_addr);
+      if(call Transport.bind(fd, &src_addr) == SUCCESS){
+         sockets[fd].isActive = TRUE;
+         sockets[fd].transfer = *t;
+         sockets[fd].curr = 0;
+         sockets[fd].written = 0;
+         build_buff(fd);
+      }
 
       call Transport.connect(fd, &dest_addr);
+
+      if(!call client_write_timer.isRunning()){
+         call client_write_timer.startPeriodic(500000 + (call Random.rand16()%300));
+      }
    }
+
+   task void client_write(){
+      uint8_t i;
+      bool writing = FALSE;
+      uint8_t len;
+      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
+         len = 0;
+         if(sockets[i].isActive == TRUE){
+            writing = TRUE;
+            if(sockets[i].written%SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0){
+               build_buff(i);
+            }
+            //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
+            len = call Transport.write(i, (uint8_t*)&sockets[i].buff[sockets[fd].written], (SOCKET_BUFFER_SIZE - sockets[i].written)*2);
+            sockets[i].written += len;
+         }
+      }
+      if(writing == FALSE){
+         call client_write_timer.stop();
+      }
+   }
+
+   event void client_write_timer.fired(){
+      post client_write();
+   }
+
 
    event void CommandHandler.clientClose(uint16_t dest, socket_port_t srcPort, socket_port_t destPort){
       error_t status;

@@ -23,12 +23,17 @@ implementation {
     components ActiveMessageC;
     Node.AMControl -> ActiveMessageC;
 
+    components RandomC as Random;
+    Node.Random -> Random;
+
     components new TimerMilliC() as steadyTimer;
     Node.steadyTimer -> steadyTimer;
 
-    components new TimerMilliC() as connectionTimer;
-    Node.connectionTimer -> connectionTimer;
+    components new TimerMilliC() as server_connection_timer;
+    Node.server_connection_timer -> server_connection_timer;
 
+    components new TimerMilliC() as client_write_timer;
+    Node.client_write_timer -> client_write_timer;
 
     components new SimpleSendC(AM_PACK);
     Node.Sender -> SimpleSendC;

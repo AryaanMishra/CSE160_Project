@@ -20,7 +20,7 @@ def main():
     # Add the main channels. These channels are declared in includes/channels.h
     s.addChannel(s.COMMAND_CHANNEL);
     s.addChannel(s.GENERAL_CHANNEL);
-    s.addChannel(s.ROUTING_CHANNEL);
+    # s.addChannel(s.ROUTING_CHANNEL);
     s.addChannel(s.TRANSPORT_CHANNEL);
 
     # After sending a ping, simulate a little to prevent collision.
@@ -29,15 +29,15 @@ def main():
     s.testServer(1, 100);
     s.runTime(60);
 
-    s.testClient(4, 1, 20, 100, 50);
+    s.testClient(4, 1, 20, 100, 1000);
     s.runTime(1);
-    s.runTime(1000);
+    s.runTime(400);
 
     s.clientClose(4, 1, 20, 100);
     s.runTime(500);
 
     s.clientClose(1, 4, 100, 20);
-    s.runTime(300);
+    s.runTime(500);
 
 
 
