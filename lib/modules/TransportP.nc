@@ -71,6 +71,7 @@ implementation{
                         sockets[newFd].effectiveWindow = SOCKET_BUFFER_SIZE;
                         makePack(&p, SYN, 1, newConn.payload.seq, sockets[newFd].dest.port, sockets[newFd].src, sockets[newFd].effectiveWindow);
                         dbg(TRANSPORT_CHANNEL, "Accepting client, seq: %u\n", newConn.payload.seq+1);
+                        p.payload_len = 0;
                         call IP.buildIP(sockets[newFd].dest.addr, PROTOCOL_TCP, &p);
                     }
                 }
@@ -81,69 +82,87 @@ implementation{
 
 
     command uint16_t Transport.write(socket_t fd, uint8_t *buff, uint16_t bufflen){
-        //MIGHT NOT BE WORKING
-        uint8_t i = sockets[fd].lastWritten;
-        uint8_t next;
-        uint8_t j = 0;
-        //uint8_t data_sent;
-        uint8_t payload[11];
+    uint8_t i = sockets[fd].lastWritten;
+    uint8_t next;
+    uint8_t j = 0;
+    uint8_t payload[11];
+    uint8_t bytes_to_send;
+    uint8_t send_idx = sockets[fd].lastSent;
+    uint8_t window_end;
 
-        uint8_t bytes_to_send;
-        uint8_t send_idx = sockets[fd].lastSent;
-
-        if(sockets[fd].flag == 0 || sockets[fd].state != ESTABLISHED){
-            //dbg(TRANSPORT_CHANNEL, "UNABLE TO WRITE\n");
-            return 0;
-        }
-
-        while(j < bufflen){
-            next = i+1;
-            if(next == SOCKET_BUFFER_SIZE){
-                next = 0;
-            }
-            if(next == sockets[fd].lastAck){
-                break;
-            }
-            sockets[fd].sendBuff[i] = buff[j]; 
-            //dbg(TRANSPORT_CHANNEL, "NODE %u Port %u wrote %u at pos %u\n", TOS_NODE_ID, sockets[fd].src, sockets[fd].sendBuff[i], i);
-            i = next;
-            j++;
-        }
-        sockets[fd].lastWritten = i;
-
-        
-
-        if(send_idx != sockets[fd].lastWritten){
-            bytes_to_send = 0;
-            while(send_idx != sockets[fd].lastWritten && bytes_to_send < 11){
-                payload[bytes_to_send] = sockets[fd].sendBuff[send_idx];
-                send_idx++;
-                if(send_idx == SOCKET_BUFFER_SIZE){
-                    send_idx = 0;
-                }
-                bytes_to_send++;
-            }
-            makePack(&p, NONE, 0, sockets[fd].lastSent, sockets[fd].dest.port, sockets[fd].src, sockets[fd].effectiveWindow);
-            p.payload_len = bytes_to_send;
-            memcpy(p.payload, payload, bytes_to_send);
-            call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
-
-            resend_helper(p, sockets[fd].RTT, fd);
-            sockets[fd].lastSent = send_idx;
-            }
-        return j;
-        }
+    if(sockets[fd].flag == 0 || sockets[fd].state != ESTABLISHED){
+        dbg(TRANSPORT_CHANNEL, "NODE %u write() FAILED: flag=%u state=%u\n", TOS_NODE_ID, sockets[fd].flag, sockets[fd].state);
+        return 0;
     }
+
+    dbg(TRANSPORT_CHANNEL, "NODE %u write() called: fd=%u bufflen=%u lastWritten=%u lastSent=%u lastAck=%u\n", TOS_NODE_ID, fd, bufflen, sockets[fd].lastWritten, sockets[fd].lastSent, sockets[fd].lastAck);
+
+    // Window starts at lastAck+1, ends at lastAck + effectiveWindow
+    window_end = (sockets[fd].lastAck + sockets[fd].effectiveWindow + 1) % SOCKET_BUFFER_SIZE;
+
+    // Buffer data up to the window end (sliding window)
+    while(j < bufflen){
+        next = i+1;
+        if(next == SOCKET_BUFFER_SIZE){
+            next = 0;
+        }
+        // Stop if we hit the window boundary
+        if(next == window_end){
+            break;
+        }
+        sockets[fd].sendBuff[i] = buff[j]; 
+        i = next;
+        j++;
+    }
+    sockets[fd].lastWritten = i;
+
+    // Send all unsent packets within the window
+    while(send_idx != sockets[fd].lastWritten){
+        bytes_to_send = 0;
+        while(send_idx != sockets[fd].lastWritten && bytes_to_send < 11){
+            payload[bytes_to_send] = sockets[fd].sendBuff[send_idx];
+            send_idx++;
+            if(send_idx == SOCKET_BUFFER_SIZE){
+                send_idx = 0;
+            }
+            bytes_to_send++;
+        }
+        
+        makePack(&p, NONE, 0, sockets[fd].lastSent, sockets[fd].dest.port, sockets[fd].src, sockets[fd].effectiveWindow);
+        p.payload_len = bytes_to_send;
+        memcpy(p.payload, payload, bytes_to_send);
+        call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
+
+        resend_helper(p, sockets[fd].RTT, fd);
+        sockets[fd].lastSent = send_idx;
+    }
+    
+    dbg(TRANSPORT_CHANNEL, "NODE %u write() returning %u bytes\n", TOS_NODE_ID, j);
+    return j;
+}
+
 
 //if ack==1 treat seq as ack number
     command error_t Transport.receive(tcp_payload_t* package, uint16_t src_addr){
         socket_t fd = call Transport.findFD(package->srcPort, src_addr);
         uint8_t new_seq;
+        new_conn_t conn;
+        uint8_t i;
         if(fd != NULL_SOCKET){
             if(package->ack == 1){
 
                 if(sockets[fd].state != CLOSED && wrap_checker(package->seq, sockets[fd].lastAck)){
                     sockets[fd].lastAck = package->seq;
+
+                    //update RTT estimate
+                    if(!call resend_queue.empty()){
+                        packet_send_t sent = call resend_queue.head();
+                        if(sent.fd == fd){
+                            uint32_t measured_RTT = call retransmit_timer.getNow() - sent.timestamp;
+                            sockets[fd].RTT = (measured_RTT >> 3) + ((sockets[fd].RTT * 7) >> 3);
+                            dbg(TRANSPORT_CHANNEL, "NODE %u updated RTT to %hu\n", TOS_NODE_ID, sockets[fd].RTT);
+                        }
+                    }
                 }
 
                 while(!call resend_queue.empty()){
@@ -170,8 +189,8 @@ implementation{
                     new_seq = (package->seq + 1) % SOCKET_BUFFER_SIZE;
 
                     makePack(&p, NONE, 1, new_seq, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow);
+                    p.payload_len = 0;
                     call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
-                    call send_timer.startPeriodic(10000 + (call Random.rand16()%500));
                     return SUCCESS;
                 }
 
@@ -208,7 +227,6 @@ implementation{
             }
         }
         else if(package->flags == SYN){
-            new_conn_t conn;
             conn.payload = *package;
             conn.src = src_addr;
 
@@ -220,7 +238,6 @@ implementation{
         else {
             // This is a data packet
             if(sockets[fd].state == ESTABLISHED){
-                uint8_t i;
                 // Copy payload data into receive buffer
                 for(i = 0; i < package->payload_len; i++){
                     sockets[fd].rcvdBuff[sockets[fd].lastRcvd] = package->payload[i];
@@ -234,6 +251,7 @@ implementation{
                 
                 // Send ACK back
                 makePack(&p, NONE, 1, sockets[fd].nextExpected, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow);
+                p.payload_len = 0;
                 call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
                 
                 dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK\n", TOS_NODE_ID);
@@ -288,6 +306,7 @@ implementation{
         dbg(TRANSPORT_CHANNEL, "SEQ of %u\n", seq);
         makePack(&p, SYN, 0, seq, addr->port, sockets[fd].src, sockets[fd].effectiveWindow);
         dbg(TRANSPORT_CHANNEL, "Transport.connect: building SYN payload\n");
+        p.payload_len = 0;
         sockets[fd].dest.addr = addr->addr;
         sockets[fd].dest.port = addr->port;
         call IP.buildIP(addr->addr, PROTOCOL_TCP, &p);
@@ -308,6 +327,7 @@ implementation{
                 dbg(TRANSPORT_CHANNEL, "NODE: %u PORT: %u MOVING TO FIN_WAIT2\n", TOS_NODE_ID, sockets[fd].src);
             }
             makePack(&p, FIN, 0, 0, sockets[fd].dest.port, sockets[fd].src, sockets[fd].effectiveWindow);
+            p.payload_len = 0;
             call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
             return SUCCESS;
         }
@@ -345,6 +365,8 @@ implementation{
         send.payload = payload;
         send.retransmitCount = 0;
         send.fd = fd;
+        send.timestamp = call retransmit_timer.getNow();
+        send.timeout = send.timestamp + (RTT * 2);  
         call resend_queue.enqueue(send);
         if(!call retransmit_timer.isRunning()){
             call retransmit_timer.startOneShot(RTT*2);
@@ -361,6 +383,11 @@ implementation{
                 clear_socket(i);
             }
         }
+    }
+
+    event void send_timer.fired(){
+        // Timer for periodic send operations
+        // Can be used for keepalive or resending unsent data
     }
 
     command void Transport.initializeSockets(){
@@ -398,29 +425,38 @@ implementation{
 //don't retransmit acks, this will be handled when the sender resends data
     event void retransmit_timer.fired(){
         packet_send_t sent;
+        uint32_t now = call retransmit_timer.getNow();
         if(call resend_queue.empty()){
                 return;
         } 
         sent = call resend_queue.dequeue();
         if(sockets[sent.fd].flag == 1 && sockets[sent.fd].state != CLOSED){
-            if(sent.payload.ack == 0){
+            if (now >= sent.timeout){
+                if(sent.payload.ack == 0){
                 if(!wrap_checker(sockets[sent.fd].lastAck, sent.payload.seq + 1)){
                     dbg(TRANSPORT_CHANNEL, "DISCARDING ACKED PACKET\n");
                 }
                 else if(sent.retransmitCount < 10){
                     call IP.buildIP(sockets[sent.fd].dest.addr, PROTOCOL_TCP, &sent.payload);
                     sent.retransmitCount++;
+                    sent.timestamp = call retransmit_timer.getNow();
+                    sent.timeout = sent.timestamp + (sockets[sent.fd].RTT * 2);
                     call resend_queue.enqueue(sent);
                     dbg(TRANSPORT_CHANNEL, "RESENDING seq %u fd %u, count %u\n", sent.payload.seq, sent.fd, sent.retransmitCount);
                 }
                 else {
                     dbg(TRANSPORT_CHANNEL, "STOPPED RESENDING seq %u fd %u\n", sent.payload.seq, sent.fd);
+                    }
                 }
+            }else{
+                call resend_queue.enqueue(sent);
             }
+            
         } 
         if(!call resend_queue.empty()){
             packet_send_t next = call resend_queue.head();
-            call retransmit_timer.startOneShot(sockets[next.fd].RTT * 2);
+            uint32_t time_until_timeout = next.timeout - now;
+            call retransmit_timer.startOneShot(time_until_timeout);
         }
       }
 
