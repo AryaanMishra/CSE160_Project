@@ -11,6 +11,7 @@ generic module TransportP(){
     uses interface Timer<TMilli> as timer_wait;
     uses interface Timer<TMilli> as retransmit_timer;
     uses interface Queue<packet_send_t> as resend_queue;
+    uses interface Timer<TMilli> as send_timer;
 }
 implementation{
     socket_store_t sockets[MAX_NUM_OF_SOCKETS];
@@ -84,8 +85,11 @@ implementation{
         uint8_t i = sockets[fd].lastWritten;
         uint8_t next;
         uint8_t j = 0;
-        uint8_t data_sent;
+        //uint8_t data_sent;
         uint8_t payload[11];
+
+        uint8_t bytes_to_send;
+        uint8_t send_idx = sockets[fd].lastSent;
 
         if(sockets[fd].flag == 0 || sockets[fd].state != ESTABLISHED){
             //dbg(TRANSPORT_CHANNEL, "UNABLE TO WRITE\n");
@@ -107,10 +111,28 @@ implementation{
         }
         sockets[fd].lastWritten = i;
 
-        while(data_sent < sockets[fd].effectiveWindow){
+        
 
-        }
+        if(send_idx != sockets[fd].lastWritten){
+            bytes_to_send = 0;
+            while(send_idx != sockets[fd].lastWritten && bytes_to_send < 11){
+                payload[bytes_to_send] = sockets[fd].sendBuff[send_idx];
+                send_idx++;
+                if(send_idx == SOCKET_BUFFER_SIZE){
+                    send_idx = 0;
+                }
+                bytes_to_send++;
+            }
+            makePack(&p, NONE, 0, sockets[fd].lastSent, sockets[fd].dest.port, sockets[fd].src, sockets[fd].effectiveWindow);
+            p.payload_len = bytes_to_send;
+            memcpy(p.payload, payload, bytes_to_send);
+            call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
+
+            resend_helper(p, sockets[fd].RTT, fd);
+            sockets[fd].lastSent = send_idx;
+            }
         return j;
+        }
     }
 
 //if ack==1 treat seq as ack number
@@ -193,10 +215,67 @@ implementation{
             dbg(TRANSPORT_CHANNEL, "NODE %u received SYN from NODE %u PORT %u\n", TOS_NODE_ID, src_addr, package->srcPort);
             return SUCCESS;
         }
+        // Handle data packets
+        else {
+            // This is a data packet
+            if(sockets[fd].state == ESTABLISHED){
+                uint8_t i;
+                // Copy payload data into receive buffer
+                for(i = 0; i < package->payload_len; i++){
+                    sockets[fd].rcvdBuff[sockets[fd].lastRcvd] = package->payload[i];
+                    sockets[fd].lastRcvd++;
+                    if(sockets[fd].lastRcvd == SOCKET_BUFFER_SIZE){
+                        sockets[fd].lastRcvd = 0;  
+                    }
+                }
+
+                sockets[fd].nextExpected = (package->seq + package->payload_len) % SOCKET_BUFFER_SIZE;
+                
+                // Send ACK back
+                makePack(&p, NONE, 1, sockets[fd].nextExpected, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow);
+                call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
+                
+                dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK\n", TOS_NODE_ID);
+                return SUCCESS;
+            }
+        }
         return FAIL;
     }
 
-    command uint16_t Transport.read(socket_t fd, uint8_t *buff, uint16_t bufflen){}
+    command uint16_t Transport.read(socket_t fd, uint8_t *buff, uint16_t bufflen){
+    uint8_t i = sockets[fd].lastRead;
+    uint8_t next;
+    uint16_t j = 0;
+
+    // Check if socket is valid and in a state where we can read
+    if(sockets[fd].flag == 0 || sockets[fd].state != ESTABLISHED){
+        return 0;
+    }
+
+    // Copy data from receive buffer to application buffer
+    while(j < bufflen){
+        // Stop if we've read all available data
+        if(i == sockets[fd].lastRcvd){
+            break;
+        }
+
+        // Copy one byte
+        buff[j] = sockets[fd].rcvdBuff[i];
+        
+        // Move to next position in circular buffer
+        i++;
+        if(i == SOCKET_BUFFER_SIZE){
+            i = 0;  // Wrap around
+        }
+        
+        j++;
+    }
+
+    // Update the lastRead pointer to where we stopped
+    sockets[fd].lastRead = i;
+
+    return j;
+}
 
     command error_t Transport.connect(socket_t fd, socket_addr_t * addr){
         uint8_t seq = call Random.rand16() % 255;
