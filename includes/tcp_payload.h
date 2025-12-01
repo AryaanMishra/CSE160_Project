@@ -6,7 +6,9 @@ enum{
     HANDSHAKE_PAYLOAD_SIZE = 18,
     SYN = 0,
     FIN = 1,
-    NONE = 2,
+    ACK = 2,
+    SYN_ACK = 3,
+    NONE = 4
 };
 
 

@@ -127,7 +127,7 @@ implementation{
             memcpy(p.payload, payload, bytes_to_send);
             call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
 
-            resend_helper(p, sockets[fd].RTT, fd);
+            // resend_helper(p, sockets[fd].RTT, fd);
             sockets[fd].lastSent = send_idx;
             }
         return j;
@@ -289,7 +289,7 @@ implementation{
         sockets[fd].dest.port = addr->port;
         call IP.buildIP(addr->addr, PROTOCOL_TCP, &p);
         sockets[fd].state = SYN_SENT;
-        resend_helper(p, sockets[fd].RTT, fd);
+        //resend_helper(p, sockets[fd].RTT, fd);
 
         return SUCCESS;
     }
