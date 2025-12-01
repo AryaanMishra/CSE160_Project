@@ -141,7 +141,7 @@ implementation{
       for(i = 0; i < SOCKET_BUFFER_SIZE; i++){
          if(sockets[d].curr < sockets[d].transfer){
             sockets[d].buff[i] = ++sockets[d].curr;
-            dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+            //dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
          } else {
             break;
          }
