@@ -17,6 +17,7 @@ typedef struct tcp_payload_t{
     nx_socket_port_t destPort;
     nx_socket_port_t srcPort;
     uint8_t window;
+    uint8_t payload_len;
     uint8_t payload[11];
 } tcp_payload_t;
 

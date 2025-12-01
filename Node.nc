@@ -132,7 +132,23 @@ implementation{
       }
 
       //READ DATA HERE
+      uint8_t i;
+      uint8_t read_buff[128];
+      uint16_t bytes_read;
 
+      for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
+         if(call currConnections.contains(i)){
+            bytes_read = call Transport.read(i, read_buff, 128);
+            if(bytes_read > 0){
+               uint8_t j;
+               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
+               for(j = 0; j < bytes_read; j++){
+                  dbg(TRANSPORT_CHANNEL, "%u ", read_buff[j]);
+               }
+               dbg(TRANSPORT_CHANNEL, "\n");
+            }
+         }
+      }
    }
 
    void build_buff(socket_t d){
