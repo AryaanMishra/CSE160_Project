@@ -125,6 +125,9 @@ implementation{
 
    event void server_connection_timer.fired(){
       socket_t newFd = call Transport.accept(fd);
+      uint8_t i;
+      uint8_t read_buff[128];
+      uint16_t bytes_read;
 
       if(newFd != NULL_SOCKET){
          dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
@@ -132,9 +135,6 @@ implementation{
       }
 
       //READ DATA HERE
-      uint8_t i;
-      uint8_t read_buff[128];
-      uint16_t bytes_read;
 
       for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
          if(call currConnections.contains(i)){

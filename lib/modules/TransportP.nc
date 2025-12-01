@@ -11,7 +11,6 @@ generic module TransportP(){
     uses interface Timer<TMilli> as timer_wait;
     uses interface Timer<TMilli> as retransmit_timer;
     uses interface Queue<packet_send_t> as resend_queue;
-    uses interface Timer<TMilli> as send_timer;
 }
 implementation{
     socket_store_t sockets[MAX_NUM_OF_SOCKETS];
@@ -133,7 +132,6 @@ implementation{
             }
         return j;
         }
-    }
 
 //if ack==1 treat seq as ack number
     command error_t Transport.receive(tcp_payload_t* package, uint16_t src_addr){
