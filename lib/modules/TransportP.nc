@@ -149,7 +149,6 @@ implementation{
 
                     makePack(&p, NONE, 1, new_seq, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow);
                     call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
-                    call send_timer.startPeriodic(10000 + (call Random.rand16()%500));
                     return SUCCESS;
                 }
 
