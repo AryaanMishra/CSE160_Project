@@ -32,6 +32,8 @@ typedef struct packet_send_t{
     tcp_payload_t payload;
     uint8_t retransmitCount;
     uint8_t fd;
+    uint32_t timestamp;  // When this packet was sent
+    uint32_t timeout;    // When it should timeout
 }packet_send_t;
 
 #endif
