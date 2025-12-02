@@ -31,7 +31,7 @@ def main():
 
     s.testClient(4, 1, 20, 100, 1000);
     s.runTime(1);
-    s.runTime(700);
+    s.runTime(1000);
 
     s.clientClose(4, 1, 20, 100);
     s.runTime(500);

@@ -141,9 +141,9 @@ implementation{
             bytes_read = call Transport.read(i, read_buff, 128);
             if(bytes_read > 0){
                uint8_t j;
-               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
+               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
                for(j = 0; j < bytes_read; j++){
-                  dbg(TRANSPORT_CHANNEL, "%u ", read_buff[j]);
+                  dbg(TRANSPORT_CHANNEL, "%u \n", read_buff[j]);
                }
                dbg(TRANSPORT_CHANNEL, "\n");
             }
@@ -157,7 +157,7 @@ implementation{
       for(i = 0; i < SOCKET_BUFFER_SIZE; i++){
          if(sockets[d].curr < sockets[d].transfer){
             sockets[d].buff[i] = ++sockets[d].curr;
-            //dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+            dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
          } else {
             break;
          }

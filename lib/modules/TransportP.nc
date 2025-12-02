@@ -69,8 +69,8 @@ implementation{
                         sockets[newFd].dest.addr = newConn.src;
                         sockets[newFd].dest.port = newConn.payload.srcPort;
                         sockets[newFd].state = SYN_RCVD;
-                        sockets[newFd].nextExpected = (newConn.payload.seq + 1) % SOCKET_BUFFER_SIZE;
-                        sockets[newFd].effectiveWindow = SOCKET_BUFFER_SIZE;
+                        sockets[newFd].nextExpected = newConn.payload.seq + 1;
+                        sockets[newFd].effectiveWindow = newConn.payload.window;
                         makePack(&p, SYN_ACK, newConn.payload.seq+1, ISN, sockets[newFd].dest.port, sockets[newFd].src, sockets[newFd].effectiveWindow, 0, &data[0]);
                         dbg(TRANSPORT_CHANNEL, "Accepting client: Sending SYN+ACK, seq:%u ack: %u\n", ISN, newConn.payload.seq+1);
                         call IP.buildIP(sockets[newFd].dest.addr, PROTOCOL_TCP, &p);
@@ -128,8 +128,7 @@ implementation{
                 }
                 bytes_to_send++;
             }
-            sockets[fd].lastSent = (sockets[fd].lastSent + bytes_to_send) % SOCKET_BUFFER_SIZE;
-            
+            dbg(TRANSPORT_CHANNEL, "SENDING PACKET seq: %u, BYTES TO SEND: %u\n", sockets[fd].lastSent, bytes_to_send);
             makePack(&p, NONE, 0, sockets[fd].lastSent, sockets[fd].dest.port, sockets[fd].src, sockets[fd].effectiveWindow, bytes_to_send, &data[0]);
             call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
 
@@ -182,29 +181,27 @@ implementation{
                     }
                 }
 
-                else {
-                    // This is a data packet
-                    if(sockets[fd].state == ESTABLISHED){
-                        uint8_t i;
-                        // Copy payload data into receive buffer
-                        for(i = 0; i < package->payload_len; i++){
-                            sockets[fd].rcvdBuff[sockets[fd].lastRcvd] = package->payload[i];
-                            sockets[fd].lastRcvd++;
-                            if(sockets[fd].lastRcvd == SOCKET_BUFFER_SIZE){
-                                sockets[fd].lastRcvd = 0;  
-                            }
-                        }
+            }
 
-                        sockets[fd].nextExpected = (package->seq + package->payload_len) % SOCKET_BUFFER_SIZE;
-                        
-                        // Send ACK back
-                        makePack(&p, ACK, sockets[fd].nextExpected, 0, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow, 0, &data[0]);
-                        call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
-                        
-                        dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK\n", TOS_NODE_ID);
-                        return SUCCESS;
+            else if(sockets[fd].state == ESTABLISHED){
+                uint8_t i;
+                // Copy payload data into receive buffer
+                for(i = 0; i < package->payload_len; i++){
+                    sockets[fd].rcvdBuff[sockets[fd].lastRcvd] = package->payload[i];
+                    sockets[fd].lastRcvd++;
+                    if(sockets[fd].lastRcvd == SOCKET_BUFFER_SIZE){
+                        sockets[fd].lastRcvd = 0;  
                     }
                 }
+
+                sockets[fd].nextExpected = (package->seq + package->payload_len) % SOCKET_BUFFER_SIZE;
+                
+                // Send ACK back
+                makePack(&p, ACK, sockets[fd].nextExpected, 0, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow, 0, &data[0]);
+                call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
+                
+                dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK\n", TOS_NODE_ID);
+                return SUCCESS;
             }
 
             else if(package->flags == SYN_ACK && sockets[fd].state == SYN_SENT){
@@ -213,8 +210,9 @@ implementation{
                 sockets[fd].state = ESTABLISHED;
                 sockets[fd].effectiveWindow = package->window;
                 sockets[fd].nextExpected = package->seq;
+                sockets[fd].lastSent = package->ack;
 
-                new_seq = (package->seq + 1) % SOCKET_BUFFER_SIZE;
+                new_seq = package->seq + 1;
                 dbg(TRANSPORT_CHANNEL, "RECEIVED SYN+ACK: seq: %u, ack: %u\n", package->seq, package->ack);
 
                 makePack(&p, ACK, 1, new_seq, package->srcPort, sockets[fd].src, sockets[fd].effectiveWindow, 0, &data[0]);
