@@ -126,7 +126,7 @@ implementation{
    event void server_connection_timer.fired(){
       socket_t newFd = call Transport.accept(fd);
       uint8_t i;
-      uint8_t read_buff[128];
+      uint16_t read_buff[64];
       uint16_t bytes_read;
 
       if(newFd != NULL_SOCKET){
@@ -142,8 +142,8 @@ implementation{
             if(bytes_read > 0){
                uint8_t j;
                dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
-               for(j = 0; j < bytes_read; j++){
-                  dbg(TRANSPORT_CHANNEL, "%u \n", read_buff[j]);
+               for(j = 0; j < bytes_read/2; j++){
+                  dbg(TRANSPORT_CHANNEL, "%u\n", read_buff[j]);
                }
                dbg(TRANSPORT_CHANNEL, "\n");
             }
@@ -154,10 +154,10 @@ implementation{
    void build_buff(socket_t d){
       uint8_t i;
       sockets[d].written = 0;
-      for(i = 0; i < SOCKET_BUFFER_SIZE; i++){
+      for(i = 0; i < SOCKET_BUFFER_SIZE/2; i++){
          if(sockets[d].curr < sockets[d].transfer){
-            sockets[d].buff[i] = ++sockets[d].curr;
-            dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+            sockets[d].buff[i*2] = ++sockets[d].curr;
+            // dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
          } else {
             break;
          }
@@ -196,6 +196,7 @@ implementation{
       uint8_t i;
       bool writing = FALSE;
       uint8_t len;
+      uint8_t write_size;
       for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
          len = 0;
          if(sockets[i].isActive == TRUE){
@@ -203,8 +204,9 @@ implementation{
             if(sockets[i].written%SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0){
                build_buff(i);
             }
+            write_size = SOCKET_BUFFER_SIZE - (sockets[i].written % SOCKET_BUFFER_SIZE);
             //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
-            len = call Transport.write(i, (uint8_t*)&sockets[i].buff[sockets[fd].written], (SOCKET_BUFFER_SIZE - sockets[i].written)*2);
+            len = call Transport.write(i, &sockets[i].buff[sockets[i].written % SOCKET_BUFFER_SIZE], write_size);
             sockets[i].written += len;
          }
       }
