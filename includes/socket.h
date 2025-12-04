@@ -6,6 +6,7 @@ enum{
     ROOT_SOCKET_ADDR = 255,
     ROOT_SOCKET_PORT = 255,
     SOCKET_BUFFER_SIZE = 128,
+    NULL_SOCKET = 255,
 };
 
 enum socket_state{
@@ -14,6 +15,11 @@ enum socket_state{
     ESTABLISHED,
     SYN_SENT,
     SYN_RCVD,
+    FIN_WAIT,
+    FIN_WAIT2,
+    TIME_WAIT,
+    CLOSE_WAIT,
+    LAST_ACK,
 };
 
 
@@ -52,5 +58,13 @@ typedef struct socket_store_t{
     uint16_t RTT;
     uint8_t effectiveWindow;
 }socket_store_t;
+
+typedef struct active_socket_t{
+    uint16_t buff[SOCKET_BUFFER_SIZE];
+    uint16_t transfer;
+    uint16_t written;
+    uint16_t curr;
+    bool isActive;
+}active_socket_t;
 
 #endif

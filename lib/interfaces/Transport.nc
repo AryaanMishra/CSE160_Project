@@ -1,4 +1,4 @@
-#include "../../packet.h"
+#include "../../includes/packet.h"
 #include "../../includes/socket.h"
 
 /**
@@ -79,7 +79,7 @@ interface Transport{
     * @return uint16_t - return SUCCESS if you are able to handle this
     *    packet or FAIL if there are errors.
     */
-   command error_t receive(pack* package);
+   command error_t receive(tcp_payload_t* package, uint16_t src_addr);
 
    /**
     * Read from the socket and write this data to the buffer. This data
@@ -144,4 +144,10 @@ interface Transport{
     *   to listen else FAIL.
     */
    command error_t listen(socket_t fd);
+
+   //MY STUFF
+   command void initializeSockets();
+
+   command uint8_t findFD(uint8_t src_port, uint16_t src_addr);
+
 }

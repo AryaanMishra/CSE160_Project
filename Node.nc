@@ -14,6 +14,7 @@
 #include "includes/channels.h"
 #include "includes/protocol.h"
 #include "includes/socket.h"
+#include "includes/tcp_payload.h"
 
 module Node{
    uses interface Boot;
@@ -34,13 +35,23 @@ module Node{
 
    uses interface IP as IP;
 
+   uses interface Transport as Transport;
+
    uses interface Timer<TMilli> as steadyTimer;
 
+   uses interface Hashmap<bool> as currConnections;
 
+   uses interface Timer<TMilli> as server_connection_timer;
+
+   uses interface Timer<TMilli> as client_write_timer;
+
+	uses interface Random;
 }
 
 implementation{
    pack sendPackage;
+   socket_t fd;
+   active_socket_t sockets[10];
 
    // Prototype (used by other handlers in this module)
    void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t *payload, uint8_t length);
@@ -50,7 +61,8 @@ implementation{
 
       dbg(GENERAL_CHANNEL, "Booted\n");
       call Neighbor.findNeighbors();
-      call steadyTimer.startOneShot(100000);
+      call steadyTimer.startOneShot(100000 + (call Random.rand16()%300));
+      call Transport.initializeSockets();
 
    }
 
@@ -78,7 +90,7 @@ implementation{
       // Implement proper ping via IP layer
       // For now, just log the ping request
       dbg(GENERAL_CHANNEL, "Ping functionality not yet implemented\n");
-      call IP.buildIP(destination, PROTOCOL_IP);
+      call IP.buildIP(destination, PROTOCOL_IP, (tcp_payload_t*)payload);
    }
 
    
@@ -100,9 +112,136 @@ implementation{
 
    event void CommandHandler.printDistanceVector(){}
 
-   event void CommandHandler.setTestServer(){}
+   event void CommandHandler.setTestServer(socket_port_t port){
+      socket_addr_t addr;
+      dbg(TRANSPORT_CHANNEL, "NODE %u OPENING PORT: %u\n", TOS_NODE_ID, port);
+      fd = call Transport.socket();
+      addr.addr = TOS_NODE_ID;
+      addr.port = port;
+      call Transport.bind(fd, &addr);
+      call Transport.listen(fd);
+      call server_connection_timer.startPeriodic(1000 + (call Random.rand16()%300));
+   }
 
-   event void CommandHandler.setTestClient(){}
+   event void server_connection_timer.fired(){
+      uint8_t i;
+      uint8_t read_buff[128];
+      uint16_t bytes_read;
+      socket_t newFd = call Transport.accept(fd);
+
+      if(newFd != NULL_SOCKET){
+         dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
+         call currConnections.insert(newFd, TRUE);
+      }
+
+      //READ DATA HERE
+
+      for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
+         if(call currConnections.contains(i)){
+            bytes_read = call Transport.read(i, read_buff, 128);
+            if(bytes_read > 0){
+               uint8_t j;
+               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
+               for(j = 0; j < bytes_read; j++){
+                  dbg(TRANSPORT_CHANNEL, "%u ", read_buff[j]);
+               }
+               dbg(TRANSPORT_CHANNEL, "\n");
+            }
+         }
+      }
+   }
+
+   void build_buff(socket_t d){
+      uint8_t i;
+      sockets[d].written = 0;
+      for(i = 0; i < SOCKET_BUFFER_SIZE; i++){
+         if(sockets[d].curr < sockets[d].transfer){
+            sockets[d].buff[i] = ++sockets[d].curr;
+            //dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+         } else {
+            break;
+         }
+      }
+   }
+
+   event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
+      socket_addr_t src_addr;
+      socket_addr_t dest_addr;
+      uint16_t* t = (uint16_t *)transfer;
+      error_t bindResult;
+      dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
+      dbg(TRANSPORT_CHANNEL, "SETTEST CLIENT CALLED ON NODE %u\n", TOS_NODE_ID);
+
+      src_addr.addr = TOS_NODE_ID;
+      src_addr.port = srcPort;
+
+      dest_addr.addr = dest;
+      dest_addr.port = destPort;
+      
+      fd = call Transport.socket();
+      dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET FD: %u\n", TOS_NODE_ID, fd);
+      bindResult = call Transport.bind(fd, &src_addr);
+      dbg(TRANSPORT_CHANNEL, "NODE %u BIND RESULT: %u\n", TOS_NODE_ID, bindResult);
+      if(bindResult == SUCCESS){
+         sockets[fd].isActive = TRUE;
+         sockets[fd].transfer = *t;
+         sockets[fd].curr = 0;
+         sockets[fd].written = 0;
+         build_buff(fd);
+         dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
+      }
+
+      call Transport.connect(fd, &dest_addr);
+      dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
+
+      call client_write_timer.stop();
+      call client_write_timer.startPeriodic(2000 + (call Random.rand16()%300));
+      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT WRITE TIMER STARTED\n", TOS_NODE_ID);
+   }
+
+   task void client_write(){
+      uint8_t i;
+      bool writing = FALSE;
+      uint8_t len;
+      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT WRITE TASK FIRED\n", TOS_NODE_ID);
+      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
+         len = 0;
+         if(sockets[i].isActive == TRUE){
+            writing = TRUE;
+            if(sockets[i].written%SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0){
+               build_buff(i);
+            }
+            //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
+            len = call Transport.write(i, (uint8_t*)&sockets[i].buff[sockets[i].written], (SOCKET_BUFFER_SIZE - sockets[i].written)*2);
+            dbg(TRANSPORT_CHANNEL, "NODE %u WROTE %u BYTES ON SOCKET %u\n", TOS_NODE_ID, len, i);
+            sockets[i].written += len;
+         }
+      }
+      if(writing == FALSE){
+         call client_write_timer.stop();
+      }
+   }
+
+   event void client_write_timer.fired(){
+      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT_WRITE_TIMER FIRED\n", TOS_NODE_ID);
+      post client_write();
+   }
+
+
+   event void CommandHandler.clientClose(uint16_t dest, socket_port_t srcPort, socket_port_t destPort){
+      error_t status;
+      socket_t client_fd = call Transport.findFD(destPort, dest);
+      if(client_fd != NULL_SOCKET){
+         status = call Transport.close(client_fd);
+         if(status == SUCCESS){
+            dbg(TRANSPORT_CHANNEL, "CLIENT IS CLOSING\n");
+         }
+         else{
+            dbg(TRANSPORT_CHANNEL, "CLIENT FAILED TO CLOSE\n");
+         }
+      }
+      
+   }
 
    event void CommandHandler.setAppServer(){}
 

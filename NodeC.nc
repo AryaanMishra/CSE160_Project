@@ -23,9 +23,17 @@ implementation {
     components ActiveMessageC;
     Node.AMControl -> ActiveMessageC;
 
+    components RandomC as Random;
+    Node.Random -> Random;
+
     components new TimerMilliC() as steadyTimer;
     Node.steadyTimer -> steadyTimer;
 
+    components new TimerMilliC() as server_connection_timer;
+    Node.server_connection_timer -> server_connection_timer;
+
+    components new TimerMilliC() as client_write_timer;
+    Node.client_write_timer -> client_write_timer;
 
     components new SimpleSendC(AM_PACK);
     Node.Sender -> SimpleSendC;
@@ -38,6 +46,10 @@ implementation {
 
     components new ipC() as IP;
     Node.IP -> IP;
+
+    components new TransportC() as Transport;
+    Node.Transport -> Transport;
+    Transport.IP -> IP;
 
     components new LinkStateC() as LinkState;
     Node.LinkState -> LinkState;
@@ -61,5 +73,9 @@ implementation {
     IP.LinkLayer -> LinkLayerC;
     IP.LinkState -> LinkState;
     IP.Sender -> SimpleSendC;
+    IP.Transport -> Transport;
+
+    components new HashmapC(bool, 20) as currConnections;
+    Node.currConnections -> currConnections;
 
 }

@@ -7,6 +7,7 @@
 #include "../../includes/protocol.h"
 #include "../../includes/ip_header.h"
 #include "../../includes/ll_header.h"
+#include "../../includes/tcp_payload.h"
 
 generic module ipP(){
     provides interface IP;
@@ -14,15 +15,17 @@ generic module ipP(){
     uses interface LinkLayer;
     uses interface LinkState;
     uses interface SimpleSend as Sender;
+    uses interface Transport;
 }
 
 implementation{
 
-    command void IP.buildIP(uint16_t dest, uint8_t protocol){
+    command void IP.buildIP(uint16_t dest, uint8_t protocol, tcp_payload_t* payload){
         uint8_t buffer[28];
         uint16_t next_hop;
         ll_header* ll;
         ip_header* iph;
+        tcp_payload_t* payloadPtr;
 
         // Check if we have a route to the destination
         if(!call LinkState.has_route_to(dest)){
@@ -45,6 +48,9 @@ implementation{
         iph->dest = dest;
         iph->TTL = 30;
 
+        payloadPtr = (tcp_payload_t *)iph->payload;
+        *payloadPtr = *payload;
+
         dbg(ROUTING_CHANNEL, "NODE %u: Sending IP packet to %u via next hop %u (TTL: %u)\n",
             TOS_NODE_ID, dest, next_hop, iph->TTL);
 
@@ -57,21 +63,25 @@ implementation{
         uint16_t next_hop;
         ll_header* ll = (ll_header*)payload;
         ip_header* iph = (ip_header*)ll->payload;
+        error_t status;
 
         dbg(ROUTING_CHANNEL, "NODE %u: Received IP packet from %u to %u (TTL: %u)\n",
             TOS_NODE_ID, iph->src, iph->dest, iph->TTL);
 
         if(TOS_NODE_ID == iph->dest){
-            if(ll->protocol == PROTOCOL_IP){
+            if(ll->protocol == PROTOCOL_IP || ll->protocol == PROTOCOL_TCP){
                 dbg(ROUTING_CHANNEL, "NODE %u: Packet arrived at destination\n", TOS_NODE_ID);
-                call IP.buildIP(iph->src, PROTOCOL_IPACK);
-            }else{
-                dbg(ROUTING_CHANNEL, "NODE %u: ACK received from node %u\n", TOS_NODE_ID, iph->src);
+                if(ll->protocol == PROTOCOL_TCP){
+                    status = call Transport.receive((tcp_payload_t*)iph->payload, iph->src);
+                    if(status == FAIL){
+                        dbg(TRANSPORT_CHANNEL, "Packet could not be handled\n");
+                    }
+                }
             }
             return msg;
         }
 
-        iph->TTL--;
+        iph->TTL -= 1;
 
         if(iph->TTL <= 0){
             dbg(ROUTING_CHANNEL, "NODE %u: Packet TTL expired, dropping packet from %u to %u\n",
@@ -97,4 +107,5 @@ implementation{
 
         return msg;
     }
+
 }

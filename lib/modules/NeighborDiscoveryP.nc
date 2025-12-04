@@ -63,7 +63,7 @@ implementation {
 //When the task is posted it will send a package to all enighbors
     task void search(){
         sequenceNum++;
-        ping(AM_BROADCAST_ADDR, "pack");
+        ping(AM_BROADCAST_ADDR, (uint8_t*)"pack");
     }
 
 // Main functionality: When a node recieves a package, if it recieved a ping is will return a ping reply, otherwise it will hash the 
@@ -97,7 +97,7 @@ implementation {
             }
             else if (nd->protocol == PROTOCOL_PING){
                 //dbg(NEIGHBOR_CHANNEL, "Received PING from Node %d, sending reply\n", ll->src);
-                pingReply(ll->src, "pack");  // Reply to the sender, not broadcast
+                pingReply(ll->src, (uint8_t*)"pack");  // Reply to the sender, not broadcast
             }
 
             return msg;
@@ -113,11 +113,12 @@ implementation {
 //If the nodes reply/sent ration is less than 80% it will be set to inactive
     void updateActive(){
         uint32_t* keys = call Hashmap.getKeys();
-        uint16_t j = 0;
+        uint16_t j;
         uint32_t integrity;
         bool changed = FALSE;
+        uint16_t size = call Hashmap.size();
 
-        for(j; j < call Hashmap.size(); j++){
+        for(j = 0; j < size; j++){
 
             t.seq = (call Hashmap.get(keys[j])).seq;
             integrity = (t.seq*100) / sequenceNum;
@@ -143,13 +144,14 @@ implementation {
     command void NeighborDiscovery.printNeighbors(){
 
         uint32_t* keys = call Hashmap.getKeys();
-        uint16_t j = 0;
+        uint16_t j;
         uint32_t integrity;
+        uint16_t size = call Hashmap.size();
 
         updateActive();
         dbg(NEIGHBOR_CHANNEL, "NODE %d Neigbors:\n", TOS_NODE_ID);
 
-        for(j; j < call Hashmap.size(); j++){
+        for(j = 0; j < size; j++){
             t = call Hashmap.get(keys[j]);
 
             if(t.isActive == TRUE){
@@ -164,11 +166,12 @@ implementation {
         uint32_t* all_keys = call Hashmap.getKeys();
         uint32_t i, active_count =0;
         table neighbor_info;
+        uint16_t size = call Hashmap.size();
 
         updateActive();
 
         //filter out only active neighbors
-        for(i = 0; i < call Hashmap.size() && active_count < 20; i++){
+        for(i = 0; i < size && active_count < 20; i++){
             neighbor_info = call Hashmap.get(all_keys[i]);
             if(neighbor_info.isActive == TRUE){
                 active_keys[active_count] = all_keys[i];
@@ -182,11 +185,12 @@ implementation {
         uint32_t* all_keys = call Hashmap.getKeys();
         uint32_t i, active_count =0;
         table neighbor_info;
+        uint16_t size = call Hashmap.size();
 
         updateActive();
 
         //count only active neighbors
-        for(i = 0; i < call Hashmap.size(); i++){
+        for(i = 0; i < size; i++){
             neighbor_info = call Hashmap.get(all_keys[i]);
             if(neighbor_info.isActive == TRUE){
                 active_count++;
@@ -195,33 +199,4 @@ implementation {
         return active_count;
     }
 
-    command uint8_t NeighborDiscovery.getNeighborCost(uint16_t neighbor_id){
-        uint32_t integrity;
-        table neighbor_info;
-
-        if(!call Hashmap.contains(neighbor_id)){
-            return 255; // Unknown neighbor
-        }
-
-        updateActive();
-
-        neighbor_info = call Hashmap.get(neighbor_id);
-        if(!neighbor_info.isActive){
-            return 255; // Inactive neighbor
-        }
-
-        integrity = (neighbor_info.seq * 100) / sequenceNum;
-
-        if(integrity >= 95){
-            return 1; // Best cost
-        } else if(integrity >= 90){
-            return 2; // Higher cost
-        } else if(integrity >= 85){
-            return 3; // Medium cost
-        } else if(integrity >= 80){
-            return 4; // Medium cost
-        }else {
-            return 5; // Lower cost
-        }
-    }
 }
