@@ -207,6 +207,7 @@ implementation{
       uint16_t bytes_remaining;
       uint8_t write_size_buffer;
       uint8_t len;
+<<<<<<< HEAD
       
       for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){      
          if(sockets[i].isActive == TRUE){
@@ -233,6 +234,18 @@ implementation{
                   
                   sockets[i].written += len; 
                }
+=======
+      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
+         len = 0;
+         if(sockets[i].isActive == TRUE){
+            writing = TRUE;
+            if(sockets[i].written%SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0){
+               build_buff(i);
+            }
+            //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
+            len = call Transport.write(i, (uint8_t*)&sockets[i].buff[sockets[i].written], (SOCKET_BUFFER_SIZE - sockets[i].written)*2);
+            sockets[i].written += len;
+>>>>>>> a730ebdef2af3d084d0bb8c678008df370ee9028
          }
       }
       
