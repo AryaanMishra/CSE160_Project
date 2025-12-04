@@ -122,30 +122,31 @@ implementation{
       call Transport.listen(fd);
       call server_connection_timer.startPeriodic(300000 + (call Random.rand16()%300));
    }
-
+   
    event void server_connection_timer.fired(){
-      uint8_t i;
-      uint8_t read_buff[128];
-      uint16_t bytes_read;
       socket_t newFd = call Transport.accept(fd);
+      uint8_t i;
+      uint8_t read_buff[SOCKET_BUFFER_SIZE];
+      uint16_t bytes_read;
+      uint16_t* p;
 
       if(newFd != NULL_SOCKET){
          dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
          call currConnections.insert(newFd, TRUE);
       }
 
-      //READ DATA HERE
 
       for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
          if(call currConnections.contains(i)){
-            bytes_read = call Transport.read(i, read_buff, 128);
+            bytes_read = call Transport.read(i, (uint8_t*)&read_buff, 128);
+            p = (uint16_t*)read_buff;
             if(bytes_read > 0){
                uint8_t j;
-               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
-               for(j = 0; j < bytes_read; j++){
-                  dbg(TRANSPORT_CHANNEL, "%u ", read_buff[j]);
+               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
+               for(j = 0; j < bytes_read/2; j++){
+                  dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
                }
-               dbg(TRANSPORT_CHANNEL, "\n");
+               dbg_clear(TRANSPORT_CHANNEL, "\n");
             }
          }
       }
@@ -164,10 +165,9 @@ implementation{
       }
    }
 
-   event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
+   event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint16_t transfer){
       socket_addr_t src_addr;
       socket_addr_t dest_addr;
-      uint16_t* t = (uint16_t *)transfer;
       error_t bindResult;
       dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
       dbg(TRANSPORT_CHANNEL, "SETTEST CLIENT CALLED ON NODE %u\n", TOS_NODE_ID);
@@ -184,11 +184,11 @@ implementation{
       dbg(TRANSPORT_CHANNEL, "NODE %u BIND RESULT: %u\n", TOS_NODE_ID, bindResult);
       if(bindResult == SUCCESS){
          sockets[fd].isActive = TRUE;
-         sockets[fd].transfer = *t;
+         sockets[fd].transfer = transfer;
          sockets[fd].curr = 0;
          sockets[fd].written = 0;
          build_buff(fd);
-         dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
+         dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE, Transfer %u\n", TOS_NODE_ID, sockets[fd].transfer);
       }
 
       call Transport.connect(fd, &dest_addr);
@@ -203,7 +203,6 @@ implementation{
       uint8_t i;
       bool writing = FALSE;
       uint8_t len;
-      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT WRITE TASK FIRED\n", TOS_NODE_ID);
       for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
          len = 0;
          if(sockets[i].isActive == TRUE){
@@ -213,7 +212,6 @@ implementation{
             }
             //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
             len = call Transport.write(i, (uint8_t*)&sockets[i].buff[sockets[i].written], (SOCKET_BUFFER_SIZE - sockets[i].written)*2);
-            dbg(TRANSPORT_CHANNEL, "NODE %u WROTE %u BYTES ON SOCKET %u\n", TOS_NODE_ID, len, i);
             sockets[i].written += len;
          }
       }
@@ -223,7 +221,6 @@ implementation{
    }
 
    event void client_write_timer.fired(){
-      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT_WRITE_TIMER FIRED\n", TOS_NODE_ID);
       post client_write();
    }
 

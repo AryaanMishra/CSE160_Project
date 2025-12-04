@@ -117,10 +117,8 @@ implementation{
             uint8_t k;
 
             in_flight = get_distance(sockets[fd].lastSent, sockets[fd].lastAck);
-            dbg(TRANSPORT_CHANNEL, "in_flight: %u, window: %u\n", in_flight, sockets[fd].effectiveWindow);
 
             if(in_flight >= sockets[fd].effectiveWindow){
-                dbg(TRANSPORT_CHANNEL, "Window full\n");
                 break; 
             }
             
