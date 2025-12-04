@@ -129,10 +129,6 @@ implementation{
       uint8_t read_buff[SOCKET_BUFFER_SIZE];
       uint16_t bytes_read;
       uint16_t* p;
-      uint8_t i;
-      uint8_t read_buff[SOCKET_BUFFER_SIZE];
-      uint16_t bytes_read;
-      uint16_t* p;
 
       if(newFd != NULL_SOCKET){
          dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
@@ -144,22 +140,16 @@ implementation{
          if(call currConnections.contains(i)){
             bytes_read = call Transport.read(i, (uint8_t*)&read_buff, 128);
             p = (uint16_t*)read_buff;
-            bytes_read = call Transport.read(i, (uint8_t*)&read_buff, 128);
-            p = (uint16_t*)read_buff;
             if(bytes_read > 0){
                uint8_t j;
                dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
                for(j = 0; j < bytes_read/2; j++){
                   dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
-               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
-               for(j = 0; j < bytes_read/2; j++){
-                  dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
                }
-               dbg_clear(TRANSPORT_CHANNEL, "\n");
                dbg_clear(TRANSPORT_CHANNEL, "\n");
             }
          }
-      }
+   }
    }
 
    void build_buff(socket_t d){
