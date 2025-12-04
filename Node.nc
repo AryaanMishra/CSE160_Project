@@ -133,21 +133,52 @@ implementation{
       if(newFd != NULL_SOCKET){
          dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
          call currConnections.insert(newFd, TRUE);
+         sockets[newFd].has_odd = FALSE; 
+         sockets[newFd].odd_byte = 0; 
       }
-
 
       for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
          if(call currConnections.contains(i)){
-            bytes_read = call Transport.read(i, (uint8_t*)&read_buff, 128);
-            p = (uint16_t*)read_buff;
-            if(bytes_read > 0){
-               uint8_t j;
-               dbg_clear(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
-               for(j = 0; j < bytes_read/2; j++){
-                  dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
+               
+               uint16_t start_index = 0;
+               uint16_t total_data;
+               uint16_t num_16;
+               
+               if(sockets[i].has_odd){
+                  read_buff[0] = sockets[i].odd_byte;
+                  start_index = 1;
                }
-               dbg_clear(TRANSPORT_CHANNEL, "\n");
-            }
+               
+               bytes_read = call Transport.read(i, &read_buff[start_index], SOCKET_BUFFER_SIZE - start_index);
+               
+               total_data = bytes_read + start_index;
+
+               if(total_data > 0){
+                  uint8_t j;
+
+                  p = (uint16_t*)read_buff;
+
+                  if(total_data > 1 || (total_data == 1 && !sockets[i].has_odd)){
+                     
+                     
+                     num_16 = total_data / 2;
+                     
+                     for(j = 0; j < num_16; j++){
+                           dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
+                     }
+                     
+                     if((total_data % 2) != 0){
+                           sockets[i].has_odd = TRUE;
+                           sockets[i].odd_byte = read_buff[total_data - 1];
+                           dbg_clear(TRANSPORT_CHANNEL, "ODD_BYTE STORED: %u(8)", sockets[i].odd_byte);
+                     } else {
+                           sockets[i].has_odd = FALSE;
+                           sockets[i].odd_byte = 0;
+                     }
+                     
+                     dbg_clear(TRANSPORT_CHANNEL, "\n");
+                  }
+               } 
          }
       }
    }
