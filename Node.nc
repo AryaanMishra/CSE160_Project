@@ -126,26 +126,27 @@ implementation{
    event void server_connection_timer.fired(){
       socket_t newFd = call Transport.accept(fd);
       uint8_t i;
-      uint16_t read_buff[64];
+      uint8_t read_buff[SOCKET_BUFFER_SIZE];
       uint16_t bytes_read;
+      uint16_t* p;
 
       if(newFd != NULL_SOCKET){
          dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
          call currConnections.insert(newFd, TRUE);
       }
 
-      //READ DATA HERE
 
       for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
          if(call currConnections.contains(i)){
-            bytes_read = call Transport.read(i, read_buff, 128);
+            bytes_read = call Transport.read(i, (uint8_t*)&read_buff, 128);
+            p = (uint16_t*)read_buff;
             if(bytes_read > 0){
                uint8_t j;
                dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
                for(j = 0; j < bytes_read/2; j++){
-                  dbg(TRANSPORT_CHANNEL, "%u\n", read_buff[j]);
+                  dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
                }
-               dbg(TRANSPORT_CHANNEL, "\n");
+               dbg_clear(TRANSPORT_CHANNEL, "\n");
             }
          }
       }
@@ -153,11 +154,12 @@ implementation{
 
    void build_buff(socket_t d){
       uint8_t i;
-      sockets[d].written = 0;
+      uint16_t val;
       for(i = 0; i < SOCKET_BUFFER_SIZE/2; i++){
          if(sockets[d].curr < sockets[d].transfer){
-            sockets[d].buff[i*2] = ++sockets[d].curr;
-            // dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+            val = ++sockets[fd].curr;
+            sockets[d].buff[i*2] = (uint8_t)(val & 0x00FF);
+            sockets[d].buff[i*2 + 1] = (uint8_t)((val >> 8) & 0x00FF);
          } else {
             break;
          }
@@ -188,28 +190,45 @@ implementation{
       call Transport.connect(fd, &dest_addr);
 
       if(!call client_write_timer.isRunning()){
-         call client_write_timer.startPeriodic(500000 + (call Random.rand16()%300));
+         call client_write_timer.startPeriodic(50000 + (call Random.rand16()%300));
       }
    }
 
    task void client_write(){
       uint8_t i;
       bool writing = FALSE;
+      uint16_t total_bytes;
+      uint16_t bytes_remaining;
+      uint8_t write_size_buffer;
       uint8_t len;
-      uint8_t write_size;
-      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
-         len = 0;
+      
+      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){      
          if(sockets[i].isActive == TRUE){
-            writing = TRUE;
-            if(sockets[i].written%SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0){
-               build_buff(i);
-            }
-            write_size = SOCKET_BUFFER_SIZE - (sockets[i].written % SOCKET_BUFFER_SIZE);
-            //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
-            len = call Transport.write(i, &sockets[i].buff[sockets[i].written % SOCKET_BUFFER_SIZE], write_size);
-            sockets[i].written += len;
+               total_bytes = sockets[i].transfer * 2;
+               dbg(TRANSPORT_CHANNEL, "Total Bytes: %u, written: %u\n", total_bytes, sockets[i].written);
+               if (sockets[i].written < total_bytes) {
+                  writing = TRUE;
+                  bytes_remaining = total_bytes - sockets[i].written;
+
+                  if(sockets[i].written % SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0) {
+                     build_buff(i);
+                  }
+                  
+                  write_size_buffer = SOCKET_BUFFER_SIZE - (sockets[i].written % SOCKET_BUFFER_SIZE);
+
+                  len = (uint8_t) (bytes_remaining < write_size_buffer ? bytes_remaining : write_size_buffer);
+                  
+                  if (len == 0){
+                     return;
+                  }
+
+                  len = call Transport.write(i, &sockets[i].buff[sockets[i].written % SOCKET_BUFFER_SIZE], len);
+                  
+                  sockets[i].written += len; 
+               }
          }
       }
+      
       if(writing == FALSE){
          call client_write_timer.stop();
       }
