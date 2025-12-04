@@ -142,7 +142,7 @@ implementation{
             p = (uint16_t*)read_buff;
             if(bytes_read > 0){
                uint8_t j;
-               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: \n", TOS_NODE_ID, bytes_read, i);
+               dbg_clear(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
                for(j = 0; j < bytes_read/2; j++){
                   dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
                }
@@ -196,7 +196,7 @@ implementation{
       dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
 
       if(!call client_write_timer.isRunning()){
-         call client_write_timer.startPeriodic(50000 + (call Random.rand16()%300));
+         call client_write_timer.startPeriodic(30000 + (call Random.rand16()%300));
       }
    }
 
@@ -211,7 +211,6 @@ implementation{
       for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){      
          if(sockets[i].isActive == TRUE){
                total_bytes = sockets[i].transfer * 2;
-               // dbg(TRANSPORT_CHANNEL, "Total Bytes: %u, written: %u\n", total_bytes, sockets[i].written);
                if (sockets[i].written < total_bytes) {
                   writing = TRUE;
                   bytes_remaining = total_bytes - sockets[i].written;

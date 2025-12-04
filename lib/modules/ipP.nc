@@ -51,8 +51,7 @@ implementation{
         payloadPtr = (tcp_payload_t *)iph->payload;
         *payloadPtr = *payload;
 
-        dbg(ROUTING_CHANNEL, "NODE %u: Sending IP packet to %u via next hop %u (TTL: %u)\n",
-            TOS_NODE_ID, dest, next_hop, iph->TTL);
+        dbg(ROUTING_CHANNEL, "NODE %u: Sending IP packet to %u via next hop %u (TTL: %u)\n", TOS_NODE_ID, dest, next_hop, iph->TTL);
 
         call Sender.send(*(pack*)&buffer, ll->dest);
     }
@@ -74,7 +73,7 @@ implementation{
                 if(ll->protocol == PROTOCOL_TCP){
                     status = call Transport.receive((tcp_payload_t*)iph->payload, iph->src);
                     if(status == FAIL){
-                        dbg(TRANSPORT_CHANNEL, "Packet could not be handled\n");
+                        dbg(ROUTING_CHANNEL, "Packet could not be handled\n");
                     }
                 }
             }
