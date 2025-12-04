@@ -157,7 +157,7 @@ implementation{
       uint16_t val;
       for(i = 0; i < SOCKET_BUFFER_SIZE/2; i++){
          if(sockets[d].curr < sockets[d].transfer){
-            val = ++sockets[d].curr;
+            val = ++sockets[fd].curr;
             sockets[d].buff[i*2] = (uint8_t)(val & 0x00FF);
             sockets[d].buff[i*2 + 1] = (uint8_t)((val >> 8) & 0x00FF);
          } else {

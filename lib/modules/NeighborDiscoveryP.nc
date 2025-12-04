@@ -28,7 +28,7 @@ implementation {
     void updateActive();
     command void NeighborDiscovery.setSteady(){
         isSteady = TRUE;
-        dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
+        //dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
         call LinkState.build_and_flood_LSA();
     }
 
@@ -90,7 +90,7 @@ implementation {
 
                 // Trigger LSA if new neighbor or reactivated neighbor
                 if((isNew || wasInactive) && isSteady){
-                    dbg(NEIGHBOR_CHANNEL, "NODE %u: New/reactivated neighbor %u, triggering LSA\n", TOS_NODE_ID, ll->src);
+                    //dbg(NEIGHBOR_CHANNEL, "NODE %u: New/reactivated neighbor %u, triggering LSA\n", TOS_NODE_ID, ll->src);
                     call LinkState.build_and_flood_LSA();
                 }
 
@@ -102,7 +102,7 @@ implementation {
 
             return msg;
         }
-        dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);
+       // dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);
         return msg;
     }
 
@@ -123,16 +123,16 @@ implementation {
             t.seq = (call Hashmap.get(keys[j])).seq;
             integrity = (t.seq*100) / sequenceNum;
 
-            if(integrity < 80 && (call Hashmap.get(keys[j])).isActive == TRUE){
+            if(integrity < 30 && (call Hashmap.get(keys[j])).isActive == TRUE){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
                 changed = TRUE;
-                dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor %u became inactive\n", TOS_NODE_ID, keys[j]);
+               // dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor %u became inactive\n", TOS_NODE_ID, keys[j]);
             }
         }
 
         if(changed && isSteady){
-            dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor table changed, triggering LSA\n", TOS_NODE_ID);
+            //dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor table changed, triggering LSA\n", TOS_NODE_ID);
             call LinkState.build_and_flood_LSA();
         }
         return;
@@ -149,14 +149,14 @@ implementation {
         uint16_t size = call Hashmap.size();
 
         updateActive();
-        dbg(NEIGHBOR_CHANNEL, "NODE %d Neigbors:\n", TOS_NODE_ID);
+        //dbg(NEIGHBOR_CHANNEL, "NODE %d Neigbors:\n", TOS_NODE_ID);
 
         for(j = 0; j < size; j++){
             t = call Hashmap.get(keys[j]);
 
             if(t.isActive == TRUE){
                 integrity = (t.seq*100) / sequenceNum;
-                dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d%%\n", keys[j], integrity);
+                //dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d%%\n", keys[j], integrity);
             }
         }
     }

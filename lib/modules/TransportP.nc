@@ -189,6 +189,13 @@ implementation{
                     call retransmit_timer.startOneShot(time_until_timeout);
                 }
 
+                if(call retransmit_timer.isRunning() && !call resend_queue.empty()){
+                    uint32_t now = call retransmit_timer.getNow();
+                    packet_send_t next = call resend_queue.head();
+                    uint32_t time_until_timeout = next.timeout > now ? next.timeout - now : 1;
+                    call retransmit_timer.startOneShot(time_until_timeout);
+                }
+
                 while(!call resend_queue.empty()){
                     packet_send_t sent = call resend_queue.head();
 
@@ -367,7 +374,7 @@ implementation{
         
 
         sockets[fd].lastSent = ISN+1;
-        sockets[fd].lastAck = ISN; 
+        sockets[fd].lastAck = ISN - 1; 
         sockets[fd].lastWritten = ISN+1;
         
         dbg(TRANSPORT_CHANNEL, "Client: ISN, SEQ of %u\n", ISN);
@@ -501,7 +508,7 @@ implementation{
                 if(wrap_checker(sockets[sent.fd].lastAck, next_seq)){
                     dbg(TRANSPORT_CHANNEL, "DISCARDING ACKED PACKET on Timeout: Seq %u < Ack %u\n", sent.payload.seq, sockets[sent.fd].lastAck);
                 }
-                else if(sent.retransmitCount < 10){
+                else if(sent.retransmitCount < 100){
                     call IP.buildIP(sockets[sent.fd].dest.addr, PROTOCOL_TCP, &sent.payload);
                     sent.retransmitCount++;
                     sent.timestamp = call retransmit_timer.getNow();
