@@ -211,7 +211,7 @@ implementation{
       for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){      
          if(sockets[i].isActive == TRUE){
                total_bytes = sockets[i].transfer * 2;
-               dbg(TRANSPORT_CHANNEL, "Total Bytes: %u, written: %u\n", total_bytes, sockets[i].written);
+               // dbg(TRANSPORT_CHANNEL, "Total Bytes: %u, written: %u\n", total_bytes, sockets[i].written);
                if (sockets[i].written < total_bytes) {
                   writing = TRUE;
                   bytes_remaining = total_bytes - sockets[i].written;
@@ -229,7 +229,7 @@ implementation{
                   }
 
                   len = call Transport.write(i, &sockets[i].buff[sockets[i].written % SOCKET_BUFFER_SIZE], len);
-                  dbg(TRANSPORT_CHANNEL, "Wrote %u bytes\n", len);
+                  // dbg(TRANSPORT_CHANNEL, "Wrote %u bytes\n", len);
                   
                   sockets[i].written += len; 
                }

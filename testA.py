@@ -36,8 +36,6 @@ def main():
     s.clientClose(4, 1, 20, 100);
     s.runTime(500);
 
-    s.clientClose(1, 4, 100, 20);
-    s.runTime(500);
 
 
 
