@@ -30,8 +30,18 @@ implementation{
         sockets[fd].lastRead = 0;
         sockets[fd].lastRcvd = 0;
         sockets[fd].nextExpected = 0;
-        sockets[fd].RTT = 10000;
+        sockets[fd].RTT = 50000;
         sockets[fd].effectiveWindow = SOCKET_BUFFER_SIZE;
+    }
+
+    command uint8_t Transport.findFD(uint8_t src_port, uint16_t src_addr){
+        uint8_t i = 0;
+        for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
+            if(sockets[i].dest.port == src_port && sockets[i].dest.addr == src_addr && sockets[i].flag == 1){
+                return i;
+            }
+        }
+        return NULL_SOCKET;
     }
 
     command socket_t Transport.socket(){
@@ -55,12 +65,18 @@ implementation{
     }
 
     command socket_t Transport.accept(socket_t fd){
-        new_conn_t newConn;
-        socket_t newFd = NULL_SOCKET;
         uint8_t ISN;
+        socket_t newFd = NULL_SOCKET;
+        new_conn_t newConn;
         if(sockets[fd].state == LISTEN){
             if(!call connectionQueue.empty()){
                 newConn = call connectionQueue.dequeue();
+                if(newConn.payload.destPort == sockets[fd].src){
+                    newFd = call Transport.findFD(newConn.payload.srcPort, newConn.src);
+                    if(newFd != NULL_SOCKET){
+                        return NULL_SOCKET;
+                    }
+                }
                 if(newConn.payload.destPort == sockets[fd].src){
                     newFd = call Transport.socket();
                     if(newFd != NULL_SOCKET){
@@ -170,23 +186,17 @@ implementation{
     command error_t Transport.receive(tcp_payload_t* package, uint16_t src_addr){
         socket_t fd = call Transport.findFD(package->srcPort, src_addr);
         uint8_t new_seq;
+        
         if(fd != NULL_SOCKET){
-            // dbg(TRANSPORT_CHANNEL, "Packet details: flags: %u, ack: %u, seq %u, destPort: %u, srcPort: %u, window: %u, len: %u\n",
-            //     package->flags, package->ack, package->seq, package->destPort, package->srcPort, package->window, package->payload_len);
-
+            
             if(package->flags == ACK){
                 if(sockets[fd].state != CLOSED 
                    && wrap_checker(package->ack, sockets[fd].lastAck)
                    && get_distance(sockets[fd].lastSent, package->ack) <= SOCKET_BUFFER_SIZE ){
                     sockets[fd].lastAck = package->ack;
                     dbg(TRANSPORT_CHANNEL, "Updating ack: %u\n", sockets[fd].lastAck);
-                }
-
-                if(call retransmit_timer.isRunning() && !call resend_queue.empty()){
-                    uint32_t now = call retransmit_timer.getNow();
-                    packet_send_t next = call resend_queue.head();
-                    uint32_t time_until_timeout = next.timeout > now ? next.timeout - now : 1;
-                    call retransmit_timer.startOneShot(time_until_timeout);
+                } else {
+                    return FAIL;
                 }
 
                 if(call retransmit_timer.isRunning() && !call resend_queue.empty()){
@@ -198,13 +208,11 @@ implementation{
 
                 while(!call resend_queue.empty()){
                     packet_send_t sent = call resend_queue.head();
-
                     if(sent.fd == fd){
                         uint8_t next_seq = sent.payload.seq + sent.payload.payload_len;
                         if(sent.payload.flags & SYN || sent.payload.flags & FIN || sent.payload.flags & SYN_ACK){
                             next_seq++;
                         }
-                        
                         if(wrap_checker(sockets[fd].lastAck, next_seq)){
                             call resend_queue.dequeue();
                             dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received removing package seq: %u\n", TOS_NODE_ID, sent.payload.seq);
@@ -217,43 +225,39 @@ implementation{
                 }
 
                 if(sockets[fd].state == SYN_RCVD){
-                    //SIGNAL ESTABLISHED EVENT
-                    dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received from NODE %u PORT %u, moving to ESTABLISHED\n", TOS_NODE_ID, src_addr, package->srcPort);
+                    dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received, moving to ESTABLISHED\n", TOS_NODE_ID);
                     sockets[fd].state = ESTABLISHED;
-                    sockets[fd].lastWritten = package->ack;
-                    dbg(TRANSPORT_CHANNEL, "READY FOR DATA seq: %u next expected: %u\n", sockets[fd].lastAck, sockets[fd].nextExpected);
-                    return SUCCESS;         
+                    // Note: Do not overwrite lastWritten with ack here, just update state
+                    return SUCCESS;        
                 }
-
                 else if(sockets[fd].state == FIN_WAIT){
                     if(sockets[fd].lastSent == package->ack){
                             sockets[fd].state = FIN_WAIT2;
-                            dbg(TRANSPORT_CHANNEL, "NODE: %u PORT: %u MOVING TO FIN_WAIT2\n", TOS_NODE_ID, sockets[fd].src);
+                            dbg(TRANSPORT_CHANNEL, "NODE: %u MOVING TO FIN_WAIT2\n", TOS_NODE_ID);
                             return SUCCESS;
                     }
                 }
-
                 else if(sockets[fd].state == LAST_ACK){
                     sockets[fd].state = CLOSED;
-                    dbg(TRANSPORT_CHANNEL, "NODE: %u PORT: %u MOVING TO CLOSED\n", TOS_NODE_ID, sockets[fd].src);
+                    dbg(TRANSPORT_CHANNEL, "NODE: %u MOVING TO CLOSED\n", TOS_NODE_ID);
                     return SUCCESS;
                 }
-
                 else{
                     sockets[fd].lastAck = package->ack;
                     sockets[fd].effectiveWindow = package->window;
                     return SUCCESS;
                 }
-
             }
 
+            // --- HANDLE DATA ---
             else if(sockets[fd].state == ESTABLISHED && package->flags == NONE){
                 uint8_t i;
                 uint8_t advertised_window;
+                
                 if(package->seq != sockets[fd].nextExpected){
                     return FAIL;
                 }
-                // Copy payload data into receive buffer
+
                 for(i = 0; i < package->payload_len; i++){
                     if(sockets[fd].effectiveWindow != 0){
                         sockets[fd].rcvdBuff[sockets[fd].lastRcvd % SOCKET_BUFFER_SIZE] = package->payload[i];
@@ -261,15 +265,10 @@ implementation{
                     }
                 }
                 advertised_window = SOCKET_BUFFER_SIZE - (sockets[fd].lastRcvd - sockets[fd].lastRead);
-                dbg(TRANSPORT_CHANNEL, "Window: %u\n", advertised_window);
-
                 sockets[fd].nextExpected = package->seq + package->payload_len;
                 
-                // Send ACK back
                 makePack(&p, ACK, sockets[fd].nextExpected, 0, package->srcPort, sockets[fd].src, advertised_window, 0, &data[0]);
                 call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
-                
-                dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK, nextExpected: %u\n", TOS_NODE_ID, sockets[fd].nextExpected);
                 return SUCCESS;
             }
 
@@ -317,18 +316,18 @@ implementation{
                     }
                 }
             }
-        }
-            else if(package->flags == SYN){
-                new_conn_t conn;
-                conn.payload = *package;
-                conn.src = src_addr;
+        } 
 
-                call connectionQueue.enqueue(conn);
-                dbg(TRANSPORT_CHANNEL, "NODE %u received SYN from NODE %u PORT %u\n", TOS_NODE_ID, src_addr, package->srcPort);
-                return SUCCESS;
-            }
-            dbg(TRANSPORT_CHANNEL, "FALED PACKET: flags: %u, ack: %u, seq %u, destPort: %u, srcPort: %u, window: %u, len: %u\n",
-            package->flags, package->ack, package->seq, package->destPort, package->srcPort, package->window, package->payload_len);
+        else if(package->flags == SYN){
+            new_conn_t conn;
+            conn.payload = *package;
+            conn.src = src_addr;
+
+            call connectionQueue.enqueue(conn);
+            dbg(TRANSPORT_CHANNEL, "NODE %u received SYN from NODE %u PORT %u\n", TOS_NODE_ID, src_addr, package->srcPort);
+            return SUCCESS;
+        }
+
         return FAIL;
     }
 
@@ -363,7 +362,7 @@ implementation{
         // CHANGED
         if( (new_window > old_window) && ( (new_window >= (SOCKET_BUFFER_SIZE/2)) || (old_window == 0) ) ){
             dbg(TRANSPORT_CHANNEL, "Sending Window Update: New Window %u, last received: %u\n", new_window, sockets[fd].nextExpected-1);
-            makePack(&p, ACK, sockets[fd].nextExpected-1, 0, sockets[fd].dest.port, sockets[fd].src, new_window, 0, &data[0]);
+            makePack(&p, ACK, sockets[fd].nextExpected, 0, sockets[fd].dest.port, sockets[fd].src, new_window, 0, &data[0]);
             call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
         }
         return j;
@@ -458,28 +457,6 @@ implementation{
         for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
             sockets[i].flag = 0;
         }
-    }
-
-    command uint8_t Transport.findFD(uint8_t src_port, uint16_t src_addr){
-        uint8_t i = 0;
-        for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
-            if(sockets[i].dest.port == src_port && sockets[i].dest.addr == src_addr && sockets[i].flag == 1){
-                return i;
-            }
-        }
-        return NULL_SOCKET;
-    }
-
-
-    uint8_t findFD_by_port(uint8_t src_port, uint8_t dest_port){
-        uint8_t i = 0;
-        for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
-             dbg(TRANSPORT_CHANNEL, "DEST PORT: %u, SRC PORT: %u, flag: %u\n", sockets[i].dest.port, sockets[i].src, sockets[i].flag);
-            if(sockets[i].dest.port == dest_port && sockets[i].src == src_port && sockets[i].flag == 1){
-                return i;
-            }
-        }
-        return NULL_SOCKET;
     }
 
     bool wrap_checker(uint8_t seq1, uint8_t seq2){

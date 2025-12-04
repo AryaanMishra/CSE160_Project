@@ -19,10 +19,10 @@ implementation{
     components new TimerMilliC() as spTimer;
     LinkStateP.spTimer -> spTimer;
 
-    components new HashmapC(route_entry_t, 20) as RoutingTable;
+    components new HashmapC(route_entry_t, 30) as RoutingTable;
     LinkStateP.RoutingTable -> RoutingTable;
     
-    components new HashmapC(lsa_cache_entry_t, 20) as LSACache;
+    components new HashmapC(lsa_cache_entry_t, 30) as LSACache;
     LinkStateP.LSACache -> LSACache;
 
 }

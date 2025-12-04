@@ -156,7 +156,7 @@ implementation {
 
             if(t.isActive == TRUE){
                 integrity = (t.seq*100) / sequenceNum;
-                //dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d%%\n", keys[j], integrity);
+                dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d%%\n", keys[j], integrity);
             }
         }
     }
