@@ -82,7 +82,7 @@ implementation{
     }
 
     uint8_t get_distance(uint8_t last_sent, uint8_t last_ack){
-        return (uint8_t)(last_sent - last_ack);
+        return (uint8_t)last_sent - last_ack;
     }
 
     command uint16_t Transport.write(socket_t fd, uint8_t *buff, uint16_t bufflen){
@@ -101,6 +101,7 @@ implementation{
 
         bytes_to_write = SOCKET_BUFFER_SIZE - get_distance(sockets[fd].lastWritten, sockets[fd].lastAck);
         bytes_to_write = (bufflen < bytes_to_write) ? bufflen : bytes_to_write;
+        dbg(TRANSPORT_CHANNEL, "Bytes to write: %u last written: %u, last ack: %u, \n", bytes_to_write, sockets[fd].lastWritten, sockets[fd].lastAck);
 
         while(j < bytes_to_write){
             sockets[fd].sendBuff[i % SOCKET_BUFFER_SIZE] = buff[j]; 
@@ -120,7 +121,6 @@ implementation{
             dbg(TRANSPORT_CHANNEL, "in_flight: %u, window: %u\n", in_flight, sockets[fd].effectiveWindow);
 
             if(in_flight >= sockets[fd].effectiveWindow){
-                dbg(TRANSPORT_CHANNEL, "Window full\n");
                 break; 
             }
             
@@ -139,7 +139,7 @@ implementation{
                 data[k] = sockets[fd].sendBuff[(send_idx + k) % SOCKET_BUFFER_SIZE];
             }
 
-            dbg(TRANSPORT_CHANNEL, "SENDING PACKET seq: %u, len: %u, window: %u\n", seq_to_send, bytes_to_send, sockets[fd].effectiveWindow);
+           dbg(TRANSPORT_CHANNEL, "SENDING PACKET seq: %u, len: %u, window: %u\n", seq_to_send, bytes_to_send, sockets[fd].effectiveWindow);
             
             makePack(&p, 0, sockets[fd].nextExpected, seq_to_send, sockets[fd].dest.port, sockets[fd].src, SOCKET_BUFFER_SIZE - get_distance(sockets[fd].lastRcvd, sockets[fd].lastRead), bytes_to_send, &data[0]);
 
@@ -179,7 +179,7 @@ implementation{
                         
                         if(wrap_checker(sockets[fd].lastAck, next_seq)){
                             call resend_queue.dequeue();
-                            dbg(TRANSPORT_CHANNEL, "ACK received removing package seq: %u\n", sent.payload.seq);
+                            // dbg(TRANSPORT_CHANNEL, "ACK received removing package seq: %u\n", sent.payload.seq);
                         } else {
                             break; 
                         }
@@ -235,7 +235,7 @@ implementation{
                     }
                 }
                 advertised_window = SOCKET_BUFFER_SIZE - (sockets[fd].lastRcvd - sockets[fd].lastRead);
-                dbg(TRANSPORT_CHANNEL, "Window: %u\n", advertised_window);
+                // dbg(TRANSPORT_CHANNEL, "Window: %u\n", advertised_window);
 
                 sockets[fd].nextExpected = package->seq + package->payload_len;
                 
@@ -243,7 +243,7 @@ implementation{
                 makePack(&p, ACK, sockets[fd].nextExpected, 0, package->srcPort, sockets[fd].src, advertised_window, 0, &data[0]);
                 call IP.buildIP(src_addr, PROTOCOL_TCP, &p);
                 
-                dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK, nextExpected: %u\n", TOS_NODE_ID, sockets[fd].nextExpected);
+                // dbg(TRANSPORT_CHANNEL, "NODE %u received data, sending ACK, nextExpected: %u\n", TOS_NODE_ID, sockets[fd].nextExpected);
                 return SUCCESS;
             }
 
@@ -324,7 +324,7 @@ implementation{
         new_data = get_distance(sockets[fd].lastRcvd, sockets[fd].lastRead);
         new_window = SOCKET_BUFFER_SIZE - new_data;
         if((new_window > old_window) && (new_window >= (SOCKET_BUFFER_SIZE/2))){
-            dbg(TRANSPORT_CHANNEL, "Sending Window Update: New Window %u\n", new_window);
+            dbg(TRANSPORT_CHANNEL, "Sending Window Update: New Window %u, ack: %u\n", new_window, sockets[fd].nextExpected);
             makePack(&p, ACK, sockets[fd].lastRcvd, 0, sockets[fd].dest.port, sockets[fd].src, new_window, 0, &data[0]);
             call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
         }
@@ -474,7 +474,7 @@ implementation{
                 }
 
                 if(wrap_checker(sockets[sent.fd].lastAck, next_seq)){
-                    dbg(TRANSPORT_CHANNEL, "DISCARDING ACKED PACKET on Timeout: Seq %u < Ack %u\n", sent.payload.seq, sockets[sent.fd].lastAck);
+                    // dbg(TRANSPORT_CHANNEL, "DISCARDING ACKED PACKET on Timeout: Seq %u < Ack %u\n", sent.payload.seq, sockets[sent.fd].lastAck);
                 }
                 else if(sent.retransmitCount < 10){
                     call IP.buildIP(sockets[sent.fd].dest.addr, PROTOCOL_TCP, &sent.payload);

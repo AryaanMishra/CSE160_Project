@@ -223,6 +223,7 @@ implementation{
                   }
 
                   len = call Transport.write(i, &sockets[i].buff[sockets[i].written % SOCKET_BUFFER_SIZE], len);
+                  dbg(TRANSPORT_CHANNEL, "Wrote %u bytes\n", len);
                   
                   sockets[i].written += len; 
                }
