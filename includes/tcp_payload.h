@@ -1,9 +1,11 @@
 #ifndef TCP_PAYLOAD_H
 #define TCP_PAYLOAD_H
 
-
+#include "ip_header.h"
+#include "ll_header.h"
 enum{
-    HANDSHAKE_PAYLOAD_SIZE = 18,
+    TCP_HEADER_LEN = 7,
+    TCP_PAYLOAD_SIZE = 28 - IP_HEADER_LENGTH - LL_HEADER_LENGTH - TCP_HEADER_LEN,
     SYN = 0,
     FIN = 1,
     ACK = 2,
@@ -20,7 +22,7 @@ typedef struct tcp_payload_t{
     nx_socket_port_t srcPort;
     uint8_t window;
     uint8_t payload_len;
-    uint8_t payload[11];
+    uint8_t payload[TCP_PAYLOAD_SIZE];
 } tcp_payload_t;
 
 typedef struct new_conn_t{

@@ -12,7 +12,7 @@ def main():
     s.loadTopo("long_line.topo");
 
     # Add a noise model to all of the motes.
-    s.loadNoise("no_noise.txt");
+    s.loadNoise("meyer-heavy.txt");
 
     # Turn on all of the sensors.
     s.bootAll();
@@ -20,24 +20,22 @@ def main():
     # Add the main channels. These channels are declared in includes/channels.h
     s.addChannel(s.COMMAND_CHANNEL);
     s.addChannel(s.GENERAL_CHANNEL);
-    # s.addChannel(s.ROUTING_CHANNEL);
+    s.addChannel(s.ROUTING_CHANNEL);
     s.addChannel(s.TRANSPORT_CHANNEL);
 
     # After sending a ping, simulate a little to prevent collision.
 
     s.runTime(300);
     s.testServer(1, 100);
-    s.runTime(60);
+    s.runTime(500);
 
     s.testClient(4, 1, 20, 100, 1000);
     s.runTime(1);
-    s.runTime(700);
+    s.runTime(1000);
 
     s.clientClose(4, 1, 20, 100);
     s.runTime(500);
 
-    s.clientClose(1, 4, 100, 20);
-    s.runTime(500);
 
 
 
