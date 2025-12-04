@@ -477,7 +477,7 @@ implementation{
                 if(wrap_checker(sockets[sent.fd].lastAck, next_seq)){
                     dbg(TRANSPORT_CHANNEL, "DISCARDING ACKED PACKET on Timeout: Seq %u < Ack %u\n", sent.payload.seq, sockets[sent.fd].lastAck);
                 }
-                else if(sent.retransmitCount < 10){
+                else if(sent.retransmitCount < 100){
                     call IP.buildIP(sockets[sent.fd].dest.addr, PROTOCOL_TCP, &sent.payload);
                     sent.retransmitCount++;
                     sent.timestamp = call retransmit_timer.getNow();

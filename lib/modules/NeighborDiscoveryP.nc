@@ -123,7 +123,7 @@ implementation {
             t.seq = (call Hashmap.get(keys[j])).seq;
             integrity = (t.seq*100) / sequenceNum;
 
-            if(integrity < 80 && (call Hashmap.get(keys[j])).isActive == TRUE){
+            if(integrity < 30 && (call Hashmap.get(keys[j])).isActive == TRUE){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
                 changed = TRUE;
