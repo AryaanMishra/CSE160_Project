@@ -264,6 +264,7 @@ implementation{
                 uint8_t advertised_window;
                 
                 if(package->seq != sockets[fd].nextExpected){
+                    dbg(TRANSPORT_CHANNEL, "Next Expected: %u, seq %u\n", package->seq, sockets[fd].nextExpected);
                     return FAIL;
                 }
 
@@ -371,7 +372,7 @@ implementation{
         new_window = SOCKET_BUFFER_SIZE - new_data;
 
         // CHANGED
-        if( (new_window > old_window) && ( (new_window >= (SOCKET_BUFFER_SIZE/2)) || (old_window == 0) ) ){
+        if((new_window > old_window)){
             dbg(TRANSPORT_CHANNEL, "Sending Window Update: New Window %u, last received: %u\n", new_window, sockets[fd].nextExpected-1);
             makePack(&p, ACK, sockets[fd].nextExpected, 0, sockets[fd].dest.port, sockets[fd].src, new_window, 0, &data[0]);
             call IP.buildIP(sockets[fd].dest.addr, PROTOCOL_TCP, &p);
@@ -489,7 +490,7 @@ implementation{
             
             sent = call resend_queue.dequeue(); 
             
-            if(sent.payload.ack == 0){
+            if(sent.payload.flags != ACK){
             
                 uint8_t next_seq = sent.payload.seq + sent.payload.payload_len;
 
