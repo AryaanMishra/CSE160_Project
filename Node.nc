@@ -120,7 +120,7 @@ implementation{
       addr.port = port;
       call Transport.bind(fd, &addr);
       call Transport.listen(fd);
-      call server_connection_timer.startPeriodic(300000 + (call Random.rand16()%300));
+      call server_connection_timer.startPeriodic(100000 + (call Random.rand16()%300));
    }
    
    event void server_connection_timer.fired(){
