@@ -35,8 +35,8 @@ implementation {
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
-        call neighborTimer.startPeriodic(50000+ (call Random.rand16() % 300));
-        call updateTimer.startPeriodic(50000+ (call Random.rand16() % 300));
+        call neighborTimer.startPeriodic(100000+ (call Random.rand16() % 300));
+        call updateTimer.startPeriodic(100000+ (call Random.rand16() % 300));
     }
 
 
@@ -123,7 +123,7 @@ implementation {
             t.seq = (call Hashmap.get(keys[j])).seq;
             integrity = (t.seq*100) / sequenceNum;
 
-            if(integrity < 50 && (call Hashmap.get(keys[j])).isActive == TRUE){
+            if(integrity < 30 && (call Hashmap.get(keys[j])).isActive == TRUE){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
                 changed = TRUE;

@@ -120,7 +120,7 @@ implementation{
       addr.port = port;
       call Transport.bind(fd, &addr);
       call Transport.listen(fd);
-      call server_connection_timer.startPeriodic(100000 + (call Random.rand16()%300));
+      call server_connection_timer.startPeriodic(80000 + (call Random.rand16()%300));
    }
    
    event void server_connection_timer.fired(){
@@ -162,21 +162,20 @@ implementation{
                      
                      
                      num_16 = total_data / 2;
-                     
-                     for(j = 0; j < num_16; j++){
-                           dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
+                     if(total_data > 1){
+                        dbg_clear(TRANSPORT_CHANNEL, "Socket: %u: ", i);
+                        for(j = 0; j < num_16; j++){
+                              dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
+                        }
+                        dbg_clear(TRANSPORT_CHANNEL, "\n");
                      }
-                     
                      if((total_data % 2) != 0){
                            sockets[i].has_odd = TRUE;
                            sockets[i].odd_byte = read_buff[total_data - 1];
-                           dbg_clear(TRANSPORT_CHANNEL, "ODD_BYTE STORED: %u(8)", sockets[i].odd_byte);
                      } else {
                            sockets[i].has_odd = FALSE;
                            sockets[i].odd_byte = 0;
                      }
-                     
-                     dbg_clear(TRANSPORT_CHANNEL, "\n");
                   }
                } 
          }
@@ -227,7 +226,7 @@ implementation{
       dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
 
       if(!call client_write_timer.isRunning()){
-         call client_write_timer.startPeriodic(30000 + (call Random.rand16()%300));
+         call client_write_timer.startPeriodic(10000 + (call Random.rand16()%300));
       }
    }
 
