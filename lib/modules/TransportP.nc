@@ -31,7 +31,7 @@ implementation{
         sockets[fd].lastRead = 0;
         sockets[fd].lastRcvd = 0;
         sockets[fd].nextExpected = 0;
-        sockets[fd].RTT = 5000;
+        sockets[fd].RTT = 10000;
         sockets[fd].effectiveWindow = SOCKET_BUFFER_SIZE;
     }
 
@@ -237,7 +237,7 @@ implementation{
                     packet_send_t sent = call resend_queue.head();
                     if(sent.fd != fd){
                         uint8_t next_seq = sent.payload.seq + sent.payload.payload_len;
-                        if(sent.payload.flags == SYN || sent.payload.flags == FIN){
+                        if(sent.payload.flags == SYN || sent.payload.flags == FIN || sent.payload.flags == SYN_ACK){
                             next_seq++;
                         }
                         if(wrap_checker(sockets[fd].lastAck, next_seq)){
@@ -524,7 +524,7 @@ implementation{
             
                 uint8_t next_seq = sent.payload.seq + sent.payload.payload_len;
 
-                if(sent.payload.flags == SYN || sent.payload.flags == FIN) { 
+                if(sent.payload.flags == SYN || sent.payload.flags == FIN || sent.payload.flags == SYN_ACK) { 
                     next_seq++;
                 }
 
