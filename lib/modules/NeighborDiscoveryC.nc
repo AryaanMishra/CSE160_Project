@@ -11,7 +11,6 @@ implementation{
     components new NeighborDiscoveryP();
     NeighborDiscovery = NeighborDiscoveryP.NeighborDiscovery;
 
-
     components new TimerMilliC() as neighborTimer;
     NeighborDiscoveryP.neighborTimer -> neighborTimer;
 
@@ -26,6 +25,9 @@ implementation{
 
     components new HashmapC(table, 20);
     NeighborDiscoveryP.Hashmap -> HashmapC;
+
+    components new Fixed_PointC() as Fixed_Point;
+    NeighborDiscoveryP.Fixed_Point -> Fixed_Point;
 
     NeighborDiscoveryP.LinkLayer = LinkLayer;
     NeighborDiscoveryP.LinkState = LinkState;

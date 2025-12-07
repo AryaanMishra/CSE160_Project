@@ -60,10 +60,12 @@ typedef struct socket_store_t{
 }socket_store_t;
 
 typedef struct active_socket_t{
-    uint16_t buff[SOCKET_BUFFER_SIZE];
+    uint8_t buff[SOCKET_BUFFER_SIZE];
+    uint8_t odd_byte;
+    bool has_odd;
     uint16_t transfer;
-    uint16_t written;
     uint16_t curr;
+    uint32_t written;
     bool isActive;
 }active_socket_t;
 

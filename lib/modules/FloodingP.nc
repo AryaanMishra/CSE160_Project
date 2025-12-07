@@ -27,7 +27,7 @@ implementation{
         
         // Safety check for NULL payload
         if(payload == NULL) {
-            dbg(FLOODING_CHANNEL, "NODE %u: Cannot flood NULL payload\n", TOS_NODE_ID);
+           // dbg(FLOODING_CHANNEL, "NODE %u: Cannot flood NULL payload\n", TOS_NODE_ID);
             return;
         }
         
@@ -42,7 +42,7 @@ implementation{
         
         call Hashmap.insert(TOS_NODE_ID, sequenceNum);
         call Sender.send(*(pack*)&buffer, AM_BROADCAST_ADDR);
-        dbg(FLOODING_CHANNEL, "NODE %u: STARTED FLOODING, Sequence: %u\n", TOS_NODE_ID, sequenceNum);
+        //dbg(FLOODING_CHANNEL, "NODE %u: STARTED FLOODING, Sequence: %u\n", TOS_NODE_ID, sequenceNum);
     }
 
     command message_t* Flooding.floodReceive(message_t* msg, void* payload, uint8_t len, uint8_t protocol){
@@ -59,19 +59,19 @@ implementation{
                 if(call Hashmap.contains(myMsg->flood_src)){
                     if(call Hashmap.get(myMsg->flood_src) < myMsg->seq){
                         call Hashmap.insert(myMsg->flood_src, myMsg->seq);
-                        dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
+                       // dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                         call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
                         if(protocol == PROTOCOL_LINKSTATE){
                             call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src, myMsg->seq);
                         }
                     } else{
-                        dbg(FLOODING_CHANNEL, "NODE %u: DROPPED A MESSAGE\n", TOS_NODE_ID);
+                        //dbg(FLOODING_CHANNEL, "NODE %u: DROPPED A MESSAGE\n", TOS_NODE_ID);
                         return msg;
                     }
                 }else{
                     call Hashmap.insert(myMsg->flood_src, myMsg->seq);
                     call Sender.send(*(pack*)payload, AM_BROADCAST_ADDR);
-                    dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
+                    //dbg(FLOODING_CHANNEL, "NODE %u: SENT A MESSAGE, Sequence: %u\n", TOS_NODE_ID, myMsg->seq);
                     if(protocol == PROTOCOL_LINKSTATE){
                         call LinkState.process_received_LSA((lsa_pack*)myMsg->payload, myMsg->flood_src, myMsg->seq);
                     }
@@ -80,7 +80,7 @@ implementation{
             }          
             return msg;
         }
-        dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);
+        //dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);
         return msg;
     }
 

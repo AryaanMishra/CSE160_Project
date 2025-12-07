@@ -120,57 +120,88 @@ implementation{
       addr.port = port;
       call Transport.bind(fd, &addr);
       call Transport.listen(fd);
-      call server_connection_timer.startPeriodic(1000 + (call Random.rand16()%300));
+      call server_connection_timer.startPeriodic(80000 + (call Random.rand16()%300));
    }
-
+   
    event void server_connection_timer.fired(){
-      uint8_t i;
-      uint8_t read_buff[128];
-      uint16_t bytes_read;
       socket_t newFd = call Transport.accept(fd);
+      uint8_t i;
+      uint8_t read_buff[SOCKET_BUFFER_SIZE];
+      uint16_t bytes_read;
+      uint16_t* p;
 
       if(newFd != NULL_SOCKET){
          dbg(TRANSPORT_CHANNEL, "NODE %u ACCEPTED CONNECTION ON PORT: %u\n", TOS_NODE_ID, newFd);
          call currConnections.insert(newFd, TRUE);
+         sockets[newFd].has_odd = FALSE; 
+         sockets[newFd].odd_byte = 0; 
       }
-
-      //READ DATA HERE
 
       for(i =0; i < MAX_NUM_OF_SOCKETS; i++){
          if(call currConnections.contains(i)){
-            bytes_read = call Transport.read(i, read_buff, 128);
-            if(bytes_read > 0){
-               uint8_t j;
-               dbg(TRANSPORT_CHANNEL, "NODE %u READ %u BYTES FROM SOCKET %u: ", TOS_NODE_ID, bytes_read, i);
-               for(j = 0; j < bytes_read; j++){
-                  dbg(TRANSPORT_CHANNEL, "%u ", read_buff[j]);
+               
+               uint16_t start_index = 0;
+               uint16_t total_data;
+               uint16_t num_16;
+               
+               if(sockets[i].has_odd){
+                  read_buff[0] = sockets[i].odd_byte;
+                  start_index = 1;
                }
-               dbg(TRANSPORT_CHANNEL, "\n");
-            }
+               
+               bytes_read = call Transport.read(i, &read_buff[start_index], SOCKET_BUFFER_SIZE - start_index);
+               
+               total_data = bytes_read + start_index;
+
+               if(total_data > 0){
+                  uint8_t j;
+
+                  p = (uint16_t*)read_buff;
+
+                  if(total_data > 1 || (total_data == 1 && !sockets[i].has_odd)){
+                     
+                     
+                     num_16 = total_data / 2;
+                     if(total_data > 1){
+                        dbg_clear(TRANSPORT_CHANNEL, "Socket: %u: ", i);
+                        for(j = 0; j < num_16; j++){
+                              dbg_clear(TRANSPORT_CHANNEL, "%u, ", p[j]);
+                        }
+                        dbg_clear(TRANSPORT_CHANNEL, "\n");
+                     }
+                     if((total_data % 2) != 0){
+                           sockets[i].has_odd = TRUE;
+                           sockets[i].odd_byte = read_buff[total_data - 1];
+                     } else {
+                           sockets[i].has_odd = FALSE;
+                           sockets[i].odd_byte = 0;
+                     }
+                  }
+               } 
          }
       }
    }
 
    void build_buff(socket_t d){
       uint8_t i;
-      sockets[d].written = 0;
-      for(i = 0; i < SOCKET_BUFFER_SIZE; i++){
+      uint16_t val;
+      for(i = 0; i < SOCKET_BUFFER_SIZE/2; i++){
          if(sockets[d].curr < sockets[d].transfer){
-            sockets[d].buff[i] = ++sockets[d].curr;
-            //dbg(TRANSPORT_CHANNEL, "CURRENT VALUE: %u\n", sockets[d].buff[i]);
+            val = ++sockets[fd].curr;
+            sockets[d].buff[i*2] = (uint8_t)(val & 0x00FF);
+            sockets[d].buff[i*2 + 1] = (uint8_t)((val >> 8) & 0x00FF);
          } else {
             break;
          }
       }
    }
 
-   event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint8_t* transfer){
+   event void CommandHandler.setTestClient(uint16_t dest, socket_port_t srcPort, socket_port_t destPort, uint16_t transfer){
       socket_addr_t src_addr;
       socket_addr_t dest_addr;
-      uint16_t* t = (uint16_t *)transfer;
       error_t bindResult;
+
       dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
-      dbg(TRANSPORT_CHANNEL, "SETTEST CLIENT CALLED ON NODE %u\n", TOS_NODE_ID);
 
       src_addr.addr = TOS_NODE_ID;
       src_addr.port = srcPort;
@@ -184,46 +215,62 @@ implementation{
       dbg(TRANSPORT_CHANNEL, "NODE %u BIND RESULT: %u\n", TOS_NODE_ID, bindResult);
       if(bindResult == SUCCESS){
          sockets[fd].isActive = TRUE;
-         sockets[fd].transfer = *t;
+         sockets[fd].transfer = transfer;
          sockets[fd].curr = 0;
          sockets[fd].written = 0;
          build_buff(fd);
-         dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
+         dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE, Transfer %u\n", TOS_NODE_ID, sockets[fd].transfer);
       }
 
       call Transport.connect(fd, &dest_addr);
       dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
 
-      call client_write_timer.stop();
-      call client_write_timer.startPeriodic(2000 + (call Random.rand16()%300));
-      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT WRITE TIMER STARTED\n", TOS_NODE_ID);
+      if(!call client_write_timer.isRunning()){
+         call client_write_timer.startPeriodic(10000 + (call Random.rand16()%300));
+      }
    }
 
    task void client_write(){
       uint8_t i;
       bool writing = FALSE;
+      uint16_t total_bytes;
+      uint16_t bytes_remaining;
+      uint8_t write_size_buffer;
       uint8_t len;
-      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT WRITE TASK FIRED\n", TOS_NODE_ID);
-      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
-         len = 0;
+      
+      for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){      
          if(sockets[i].isActive == TRUE){
-            writing = TRUE;
-            if(sockets[i].written%SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0){
-               build_buff(i);
-            }
-            //casts the array of uint16's to a uint8 pointer, size is multiplied by two because there are two uint8's in eacher uint16
-            len = call Transport.write(i, (uint8_t*)&sockets[i].buff[sockets[i].written], (SOCKET_BUFFER_SIZE - sockets[i].written)*2);
-            dbg(TRANSPORT_CHANNEL, "NODE %u WROTE %u BYTES ON SOCKET %u\n", TOS_NODE_ID, len, i);
-            sockets[i].written += len;
+               total_bytes = sockets[i].transfer * 2;
+               if (sockets[i].written < total_bytes) {
+                  writing = TRUE;
+                  bytes_remaining = total_bytes - sockets[i].written;
+
+                  if(sockets[i].written % SOCKET_BUFFER_SIZE == 0 && sockets[i].written != 0) {
+                     build_buff(i);
+                  }
+                  
+                  write_size_buffer = SOCKET_BUFFER_SIZE - (sockets[i].written % SOCKET_BUFFER_SIZE);
+
+                  len = (uint8_t) (bytes_remaining < write_size_buffer ? bytes_remaining : write_size_buffer);
+                  
+                  if (len == 0){
+                     return;
+                  }
+
+                  len = call Transport.write(i, &sockets[i].buff[sockets[i].written % SOCKET_BUFFER_SIZE], len);
+                  // dbg(TRANSPORT_CHANNEL, "Wrote %u bytes\n", len);
+                  
+                  sockets[i].written += len; 
+               }
          }
       }
+      
       if(writing == FALSE){
          call client_write_timer.stop();
       }
    }
 
    event void client_write_timer.fired(){
-      dbg(TRANSPORT_CHANNEL, "NODE %u CLIENT_WRITE_TIMER FIRED\n", TOS_NODE_ID);
       post client_write();
    }
 

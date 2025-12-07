@@ -18,6 +18,9 @@ implementation{
     components new TimerMilliC() as retransmit_timer;
     TransportP.retransmit_timer -> retransmit_timer;
 
+    components new TimerMilliC() as send_timer;
+    TransportP.send_timer -> send_timer;
+
     components new QueueC(packet_send_t, 100) as resend_queue;
     TransportP.resend_queue -> resend_queue;
 

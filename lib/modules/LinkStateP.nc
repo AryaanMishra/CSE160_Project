@@ -24,7 +24,7 @@ implementation{
     bool topology_ready = FALSE;        // Do we have enough LSAs to compute routes?
     uint8_t nodes_heard_from = 0;       // How many nodes have sent us LSAs?
     uint8_t expected_total_nodes = 0;   // Total nodes we expect in network
-    uint16_t adj[20][20];
+    uint16_t adj[30][30];
     bool adj_initialized = FALSE;       // Track if adjacency matrix is initialized
 
     //Forward Declaration of internal functions
@@ -37,8 +37,8 @@ implementation{
 
     void init_adj_matrix(){
         uint16_t i, j;
-        for(i = 0; i < 20; i++){
-            for(j = 0; j < 20; j++){
+        for(i = 0; i < 30; i++){
+            for(j = 0; j < 30; j++){
                 adj[i][j] = 0;
             }
         }
@@ -120,7 +120,7 @@ implementation{
 
         // Clear all existing edges from this node before adding new ones
         // This ensures that if a neighbor went down, the old edge is removed
-        for(i = 0; i < 20; i++){
+        for(i = 0; i < 30; i++){
             adj[source_node][i] = 0;
             adj[i][source_node] = 0;
         }
@@ -172,7 +172,7 @@ implementation{
         uint8_t min = 255;
         uint16_t i = 0;
         uint16_t pos = 0;
-        for(i = 0; i < 20; i++){
+        for(i = 0; i < 30; i++){
             if(visited[i] == FALSE && dist[i] <= min){
                 min = dist[i];
                 pos = i;
@@ -182,9 +182,9 @@ implementation{
     }
 
     task void dijkstra(){
-        uint8_t dist[20];
-        bool visited[20];
-        uint16_t previous[20];
+        uint8_t dist[30];
+        bool visited[30];
+        uint16_t previous[30];
         uint16_t i;
         uint16_t j;
         uint16_t u;
@@ -193,7 +193,7 @@ implementation{
         uint16_t routes_added = 0;
 
 
-        for(i = 0; i < 20; i++){
+        for(i = 0; i < 30; i++){
             dist[i] = 255;
             visited[i] = FALSE;
             previous[i] = 255;  // INVALID_NODE
@@ -204,7 +204,7 @@ implementation{
             u = minDistance(dist, visited);
             visited[u] = TRUE;
 
-            for(j = 0; j < 20; j++){
+            for(j = 0; j < 30; j++){
                 if(visited[j] == FALSE && adj[u][j] != 0 && adj[u][j] != 255){
                     alt = dist[u] + adj[u][j];
                     if(alt < dist[j]){
@@ -216,13 +216,13 @@ implementation{
         }
 
         // Clear old routes before adding new ones
-        for(i = 0; i < 20; i++){
+        for(i = 0; i < 30; i++){
             if(call RoutingTable.contains(i)){
                 call RoutingTable.remove(i);
             }
         }
 
-        for(i = 0; i < 20; i++){
+        for(i = 0; i < 30; i++){
             if(i != TOS_NODE_ID && dist[i] != 255){
                 uint16_t node = i;
 

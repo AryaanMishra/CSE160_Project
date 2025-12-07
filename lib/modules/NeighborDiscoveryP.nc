@@ -9,6 +9,7 @@
 #include "../../includes/nd_header.h"
 
 
+
 generic module NeighborDiscoveryP(){
     provides interface NeighborDiscovery;
 
@@ -19,24 +20,28 @@ generic module NeighborDiscoveryP(){
     uses interface Hashmap<table>;
     uses interface LinkLayer;
     uses interface LinkState;
+    uses interface Fixed_Point;
 }
 
 implementation {
     uint32_t sequenceNum = 0;
     table t;
     bool isSteady = FALSE;
+
     void updateActive();
+
+
     command void NeighborDiscovery.setSteady(){
         isSteady = TRUE;
-        dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
+        //dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
         call LinkState.build_and_flood_LSA();
     }
 
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
-        call neighborTimer.startPeriodic(30000+ (call Random.rand16() % 300));
-        call updateTimer.startPeriodic(50000+ (call Random.rand16() % 300));
+        call neighborTimer.startPeriodic(100000+ (call Random.rand16() % 300));
+        call updateTimer.startPeriodic(100000+ (call Random.rand16() % 300));
     }
 
 
@@ -81,7 +86,7 @@ implementation {
                 if(call Hashmap.contains(ll->src)){
                     t.seq = (call Hashmap.get(ll->src)).seq + 1;
                     wasInactive = !(call Hashmap.get(ll->src)).isActive;
-                } else{
+                } else {
                     t.seq = 1;
                     isNew = TRUE;
                 }
@@ -90,7 +95,7 @@ implementation {
 
                 // Trigger LSA if new neighbor or reactivated neighbor
                 if((isNew || wasInactive) && isSteady){
-                    dbg(NEIGHBOR_CHANNEL, "NODE %u: New/reactivated neighbor %u, triggering LSA\n", TOS_NODE_ID, ll->src);
+                    //dbg(NEIGHBOR_CHANNEL, "NODE %u: New/reactivated neighbor %u, triggering LSA\n", TOS_NODE_ID, ll->src);
                     call LinkState.build_and_flood_LSA();
                 }
 
@@ -102,7 +107,7 @@ implementation {
 
             return msg;
         }
-        dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);
+       // dbg(NEIGHBOR_CHANNEL, "Unknown Packet Type %d\n", len);
         return msg;
     }
 
@@ -110,7 +115,7 @@ implementation {
         post search();
     }
 
-//If the nodes reply/sent ration is less than 80% it will be set to inactive
+//If the nodes reply/sent ratio is less than 80% it will be set to inactive
     void updateActive(){
         uint32_t* keys = call Hashmap.getKeys();
         uint16_t j;
@@ -123,16 +128,16 @@ implementation {
             t.seq = (call Hashmap.get(keys[j])).seq;
             integrity = (t.seq*100) / sequenceNum;
 
-            if(integrity < 80 && (call Hashmap.get(keys[j])).isActive == TRUE){
+            if(integrity < 30 && (call Hashmap.get(keys[j])).isActive == TRUE){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
                 changed = TRUE;
-                dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor %u became inactive\n", TOS_NODE_ID, keys[j]);
+               // dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor %u became inactive\n", TOS_NODE_ID, keys[j]);
             }
         }
 
         if(changed && isSteady){
-            dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor table changed, triggering LSA\n", TOS_NODE_ID);
+            //dbg(NEIGHBOR_CHANNEL, "NODE %u: Neighbor table changed, triggering LSA\n", TOS_NODE_ID);
             call LinkState.build_and_flood_LSA();
         }
         return;
@@ -149,7 +154,7 @@ implementation {
         uint16_t size = call Hashmap.size();
 
         updateActive();
-        dbg(NEIGHBOR_CHANNEL, "NODE %d Neigbors:\n", TOS_NODE_ID);
+        //dbg(NEIGHBOR_CHANNEL, "NODE %d Neigbors:\n", TOS_NODE_ID);
 
         for(j = 0; j < size; j++){
             t = call Hashmap.get(keys[j]);
