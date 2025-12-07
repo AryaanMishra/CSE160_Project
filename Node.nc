@@ -200,8 +200,8 @@ implementation{
       socket_addr_t src_addr;
       socket_addr_t dest_addr;
       error_t bindResult;
+
       dbg(TRANSPORT_CHANNEL, "NODE %u PORT %u attempting to connect to NODE %u PORT %u\n", TOS_NODE_ID, srcPort, dest, destPort);
-      dbg(TRANSPORT_CHANNEL, "SETTEST CLIENT CALLED ON NODE %u\n", TOS_NODE_ID);
 
       src_addr.addr = TOS_NODE_ID;
       src_addr.port = srcPort;

@@ -9,6 +9,7 @@
 #include "../../includes/nd_header.h"
 
 
+
 generic module NeighborDiscoveryP(){
     provides interface NeighborDiscovery;
 
@@ -19,13 +20,17 @@ generic module NeighborDiscoveryP(){
     uses interface Hashmap<table>;
     uses interface LinkLayer;
     uses interface LinkState;
+    uses interface Fixed_Point;
 }
 
 implementation {
     uint32_t sequenceNum = 0;
     table t;
     bool isSteady = FALSE;
+
     void updateActive();
+
+
     command void NeighborDiscovery.setSteady(){
         isSteady = TRUE;
         //dbg(NEIGHBOR_CHANNEL, "%u is steady\n", TOS_NODE_ID);
@@ -81,7 +86,7 @@ implementation {
                 if(call Hashmap.contains(ll->src)){
                     t.seq = (call Hashmap.get(ll->src)).seq + 1;
                     wasInactive = !(call Hashmap.get(ll->src)).isActive;
-                } else{
+                } else {
                     t.seq = 1;
                     isNew = TRUE;
                 }
@@ -110,7 +115,7 @@ implementation {
         post search();
     }
 
-//If the nodes reply/sent ration is less than 80% it will be set to inactive
+//If the nodes reply/sent ratio is less than 80% it will be set to inactive
     void updateActive(){
         uint32_t* keys = call Hashmap.getKeys();
         uint16_t j;

@@ -3,6 +3,7 @@
 
 typedef struct table{
     uint16_t seq;
+    uint16_t integrity;
     bool isActive;
 }table;
 

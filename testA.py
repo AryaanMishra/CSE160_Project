@@ -12,7 +12,7 @@ def main():
     s.loadTopo("tuna-melt.topo");
 
     # Add a noise model to all of the motes.
-    s.loadNoise("some_noise.txt");
+    s.loadNoise("no_noise.txt");
 
     # Turn on all of the sensors.
     s.bootAll();
@@ -29,8 +29,8 @@ def main():
     s.testServer(1, 100);
     s.runTime(500);
 
-    s.testClient(4, 1, 20, 100, 1000);
-    s.runTime(3000);
+    s.testClient(4, 1, 20, 100, 300);
+    s.runTime(1000);
 
     s.clientClose(4, 1, 20, 100);
     s.runTime(1000);
