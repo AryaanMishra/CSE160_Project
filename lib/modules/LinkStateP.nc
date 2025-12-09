@@ -24,7 +24,7 @@ implementation{
     bool topology_ready = FALSE;        // Do we have enough LSAs to compute routes?
     uint8_t nodes_heard_from = 0;       // How many nodes have sent us LSAs?
     uint8_t expected_total_nodes = 0;   // Total nodes we expect in network
-    uint16_t adj[30][30];
+    uint16_t adj[MAX_NODES][MAX_NODES];
     bool adj_initialized = FALSE;       // Track if adjacency matrix is initialized
 
     //Forward Declaration of internal functions
@@ -37,8 +37,8 @@ implementation{
 
     void init_adj_matrix(){
         uint16_t i, j;
-        for(i = 0; i < 30; i++){
-            for(j = 0; j < 30; j++){
+        for(i = 0; i < MAX_NODES; i++){
+            for(j = 0; j < MAX_NODES; j++){
                 adj[i][j] = 0;
             }
         }
@@ -62,10 +62,10 @@ implementation{
 
         for(i = 0; i < num_active_neighbors; i++){
             lsa.entries[curr_entries].node = neighbor_keys[i];
-            lsa.entries[curr_entries].cost = 1;
+            lsa.entries[curr_entries].cost = call ND.getCost(neighbor_keys[i]);
             curr_entries++;
 
-            if(curr_entries == 6 || i == num_active_neighbors -1){
+            if(curr_entries == LSA_ENTRY_COUNT || i == num_active_neighbors -1){
                 lsa.num_entries = curr_entries;
                 my_sequence_number++;
                 call Flood.flood(&lsa, PROTOCOL_LINKSTATE);
@@ -99,7 +99,7 @@ implementation{
         return (seq_num > cached_entry.sequence_number);
     }
 
-    void addEdge(uint16_t u, uint16_t v, uint8_t cost){
+    void addEdge(uint16_t u, uint16_t v, uint16_t cost){
         adj[u][v] = cost;
         adj[v][u] = cost;
     }
@@ -120,7 +120,7 @@ implementation{
 
         // Clear all existing edges from this node before adding new ones
         // This ensures that if a neighbor went down, the old edge is removed
-        for(i = 0; i < 30; i++){
+        for(i = 0; i < MAX_NODES; i++){
             adj[source_node][i] = 0;
             adj[i][source_node] = 0;
         }
@@ -155,24 +155,15 @@ implementation{
         return 0; // No route found
     }
 
-    command uint8_t LinkState.get_route_cost(uint16_t destination) {
-        route_entry_t route;
-        if(call RoutingTable.contains(destination)) {
-            route = call RoutingTable.get(destination);
-            return route.cost;
-        }
-        return 255; // Infinite cost
-    }
-
     command bool LinkState.has_route_to(uint16_t destination) {
         return call RoutingTable.contains(destination);
     }
 
-    uint16_t minDistance(uint8_t dist[], bool visited[]){
-        uint8_t min = 255;
+    uint16_t minDistance(uint16_t dist[], bool visited[]){
+        uint16_t min = INFINITE_COST;
         uint16_t i = 0;
-        uint16_t pos = 0;
-        for(i = 0; i < 30; i++){
+        uint16_t pos = INVALID_NODE;
+        for(i = 0; i < MAX_NODES; i++){
             if(visited[i] == FALSE && dist[i] <= min){
                 min = dist[i];
                 pos = i;
@@ -182,9 +173,9 @@ implementation{
     }
 
     task void dijkstra(){
-        uint8_t dist[30];
-        bool visited[30];
-        uint16_t previous[30];
+        uint16_t dist[MAX_NODES];
+        bool visited[MAX_NODES];
+        uint16_t previous[MAX_NODES];
         uint16_t i;
         uint16_t j;
         uint16_t u;
@@ -193,19 +184,24 @@ implementation{
         uint16_t routes_added = 0;
 
 
-        for(i = 0; i < 30; i++){
-            dist[i] = 255;
+        for(i = 0; i < MAX_NODES; i++){
+            dist[i] = INFINITE_COST;
             visited[i] = FALSE;
-            previous[i] = 255;  // INVALID_NODE
+            previous[i] = INVALID_NODE;
         }
         dist[TOS_NODE_ID] = 0;
 
-        for(i = 0; i < 19; i++){
+        for(i = 0; i < MAX_NODES; i++){
             u = minDistance(dist, visited);
+
+            if(u == INVALID_NODE){
+                break;
+            }
+            
             visited[u] = TRUE;
 
-            for(j = 0; j < 30; j++){
-                if(visited[j] == FALSE && adj[u][j] != 0 && adj[u][j] != 255){
+            for(j = 0; j < MAX_NODES; j++){
+                if(visited[j] == FALSE && adj[u][j] > 0 && adj[u][j] < INFINITE_COST){
                     alt = dist[u] + adj[u][j];
                     if(alt < dist[j]){
                         dist[j] = alt;
@@ -216,17 +212,17 @@ implementation{
         }
 
         // Clear old routes before adding new ones
-        for(i = 0; i < 30; i++){
+        for(i = 0; i < MAX_NODES; i++){
             if(call RoutingTable.contains(i)){
                 call RoutingTable.remove(i);
             }
         }
 
-        for(i = 0; i < 30; i++){
-            if(i != TOS_NODE_ID && dist[i] != 255){
+        for(i = 0; i < MAX_NODES; i++){
+            if(i != TOS_NODE_ID && dist[i] != INFINITE_COST){
                 uint16_t node = i;
 
-                while(previous[node] != TOS_NODE_ID && previous[node] != 255){
+                while(previous[node] != TOS_NODE_ID && previous[node] != INVALID_NODE){
                     node = previous[node];
                 }
 

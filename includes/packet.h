@@ -15,17 +15,19 @@
 enum{
 	PACKET_HEADER_LENGTH = 8,
 	PACKET_MAX_PAYLOAD_SIZE = 28 - PACKET_HEADER_LENGTH,
+	LSA_ENTRY_SIZE = 4,
+	LSA_ENTRY_COUNT = PACKET_MAX_PAYLOAD_SIZE / LSA_ENTRY_SIZE,
 	MAX_TTL = 15
 };
 
 typedef nx_struct node_cost{
 	nx_uint16_t node;
-	nx_uint8_t cost;
+	nx_uint16_t cost;
 } node_cost;
 
 typedef nx_struct lsa_pack{
 	nx_uint8_t num_entries;
-	node_cost entries[6];
+	node_cost entries[LSA_ENTRY_COUNT];
 } lsa_pack;
 
 typedef nx_struct default_pack{

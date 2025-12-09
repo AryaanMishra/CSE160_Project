@@ -9,7 +9,7 @@ def main():
     s.runTime(1);
 
     # Load the the layout of the network.
-    s.loadTopo("tuna-melt.topo");
+    s.loadTopo("long_line.topo");
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt");
@@ -20,27 +20,24 @@ def main():
     # Add the main channels. These channels are declared in includes/channels.h
     s.addChannel(s.COMMAND_CHANNEL);
     s.addChannel(s.GENERAL_CHANNEL);
-    # s.addChannel(s.ROUTING_CHANNEL);
-    s.addChannel(s.TRANSPORT_CHANNEL);
+    s.addChannel(s.ROUTING_CHANNEL);
+    # s.addChannel(s.TRANSPORT_CHANNEL);
+    s.addChannel(s.NEIGHBOR_CHANNEL);
 
     # After sending a ping, simulate a little to prevent collision.
+    s.runTime(100);
+    while(True):
+        s.neighborDMP(1);
+        s.runTime(100);
 
-    s.runTime(1000);
-    s.testServer(1, 100);
-    s.runTime(500);
+        s.routeDMP(1);
+        s.runTime(100);
 
-    s.testClient(4, 1, 20, 100, 300);
-    s.runTime(500);
+        s.neighborDMP(4);
+        s.runTime(100);
 
-    s.testClient(8, 1, 20, 100, 400);
-    s.runTime(4000);
-
-    s.clientClose(4, 1, 20, 100);
-    s.runTime(200);
-
-    s.clientClose(8, 1, 20, 100);
-    s.runTime(1000);
-
+        s.routeDMP(4);
+        s.runTime(100);
 
 
 

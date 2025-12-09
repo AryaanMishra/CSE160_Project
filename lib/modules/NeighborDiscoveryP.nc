@@ -10,6 +10,7 @@
 
 
 
+
 generic module NeighborDiscoveryP(){
     provides interface NeighborDiscovery;
 
@@ -24,10 +25,12 @@ generic module NeighborDiscoveryP(){
 }
 
 implementation {
-    uint32_t sequenceNum = 0;
+    uint8_t sequenceNum = 0;
     table t;
     bool isSteady = FALSE;
-
+    const uint16_t alpha = 76; //This corresponds to 0.3, have to hard code as we don't use floats
+    const uint16_t fixed_1 = 256; //1
+    const uint16_t thresh = 128; //30
     void updateActive();
 
 
@@ -40,8 +43,8 @@ implementation {
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
-        call neighborTimer.startPeriodic(100000+ (call Random.rand16() % 300));
-        call updateTimer.startPeriodic(100000+ (call Random.rand16() % 300));
+        call neighborTimer.startPeriodic(10000+ (call Random.rand16() % 300));
+        call updateTimer.startPeriodic(10000+ (call Random.rand16() % 300));
     }
 
 
@@ -79,29 +82,46 @@ implementation {
             ll_header* ll = (ll_header*)payload;
             nd_header* nd = (nd_header*)ll->payload;
             if(nd->protocol == PROTOCOL_PINGREPLY){
-                //dbg(NEIGHBOR_CHANNEL, "Received PINGREPLY from Node %d\n", ll->src);
-                bool wasInactive = FALSE;
                 bool isNew = FALSE;
 
                 if(call Hashmap.contains(ll->src)){
-                    t.seq = (call Hashmap.get(ll->src)).seq + 1;
-                    wasInactive = !(call Hashmap.get(ll->src)).isActive;
-                } else {
-                    t.seq = 1;
+                    uint8_t diff;
+                    uint8_t i;
+                    t = call Hashmap.get(ll->src);
+                    
+                    diff = (uint8_t)sequenceNum - t.seq;
+                    
+                    if (diff > 0) { 
+                        for(i = 0; i < diff - 1; i++){
+                            t.integrity = call Fixed_Point.fixed_ewma_calc(0, t.integrity, alpha);
+                        }
+                    }
+                    
+                    t.integrity = call Fixed_Point.fixed_ewma_calc(fixed_1, t.integrity, alpha);
+                    t.seq = sequenceNum;
+
+                    if (t.isActive == FALSE) {
+                        t.isActive = TRUE;
+                        isNew = TRUE; 
+                    }
+                    
+                    t = t; 
+                }
+                else {
+                    t.seq = nd->seq;
+                    t.isActive = TRUE;
+                    t.integrity = fixed_1;
                     isNew = TRUE;
                 }
-                t.isActive = TRUE;
                 call Hashmap.insert(ll->src, t);
 
                 // Trigger LSA if new neighbor or reactivated neighbor
-                if((isNew || wasInactive) && isSteady){
-                    //dbg(NEIGHBOR_CHANNEL, "NODE %u: New/reactivated neighbor %u, triggering LSA\n", TOS_NODE_ID, ll->src);
+                if(isNew && isSteady){
                     call LinkState.build_and_flood_LSA();
                 }
 
             }
             else if (nd->protocol == PROTOCOL_PING){
-                //dbg(NEIGHBOR_CHANNEL, "Received PING from Node %d, sending reply\n", ll->src);
                 pingReply(ll->src, (uint8_t*)"pack");  // Reply to the sender, not broadcast
             }
 
@@ -119,16 +139,14 @@ implementation {
     void updateActive(){
         uint32_t* keys = call Hashmap.getKeys();
         uint16_t j;
-        uint32_t integrity;
         bool changed = FALSE;
         uint16_t size = call Hashmap.size();
 
         for(j = 0; j < size; j++){
 
-            t.seq = (call Hashmap.get(keys[j])).seq;
-            integrity = (t.seq*100) / sequenceNum;
+            t = (call Hashmap.get(keys[j]));
 
-            if(integrity < 30 && (call Hashmap.get(keys[j])).isActive == TRUE){
+            if(t.integrity < thresh && (call Hashmap.get(keys[j])).isActive == TRUE){
                 t.isActive = FALSE;
                 call Hashmap.insert(keys[j], t);
                 changed = TRUE;
@@ -150,8 +168,9 @@ implementation {
 
         uint32_t* keys = call Hashmap.getKeys();
         uint16_t j;
-        uint32_t integrity;
         uint16_t size = call Hashmap.size();
+        uint16_t cost;
+        uint16_t diff;
 
         updateActive();
         //dbg(NEIGHBOR_CHANNEL, "NODE %d Neigbors:\n", TOS_NODE_ID);
@@ -159,11 +178,18 @@ implementation {
         for(j = 0; j < size; j++){
             t = call Hashmap.get(keys[j]);
 
-            if(t.isActive == TRUE){
-                integrity = (t.seq*100) / sequenceNum;
-                dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d%%\n", keys[j], integrity);
-            }
+                cost = call Fixed_Point.u_fixed_div(fixed_1, t.integrity);
+                diff = sequenceNum - t.seq;
+                dbg(NEIGHBOR_CHANNEL, "     NODE %d: Integrity: %d, Cost %u, Cost Fixed: %u, diff: %u, seq: %u\n", keys[j], t.integrity, call Fixed_Point.fixed_to_uint16(cost), cost, diff, sequenceNum);
+
         }
+    }
+
+    command uint16_t NeighborDiscovery.getCost(uint16_t id){
+        table curr = call Hashmap.get(id);
+        uint16_t cost = call Fixed_Point.u_fixed_div(fixed_1, curr.integrity);
+        // cost = call Fixed_Point.fixed_to_uint16(cost);
+        return cost;
     }
 
     command uint32_t* NeighborDiscovery.getActiveNeighborKeys(){

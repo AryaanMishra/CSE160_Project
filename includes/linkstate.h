@@ -5,7 +5,7 @@
 typedef nx_struct route_entry {
     nx_uint16_t destination;      // Where we want to go
     nx_uint16_t next_hop;         // First hop to get there
-    nx_uint8_t cost;              // Total cost to destination
+    nx_uint16_t cost;              // Total cost to destination
 } route_entry_t;
 
 // LSA cache entry - prevents processing old LSA updates
@@ -18,14 +18,14 @@ typedef nx_struct lsa_cache_entry {
 // Dijkstra algorithm - represents each node in the network
 typedef struct dijkstra_node {
     nx_uint16_t node_id;          // Node identifier
-    nx_uint8_t distance;          // Current shortest distance from source
+    nx_uint16_t distance;          // Current shortest distance from source
     nx_uint16_t previous;         // Previous node in shortest path
     nx_uint8_t visited;           // Has Dijkstra processed this node? (0=false, 1=true)
 } dijkstra_node_t;
 
 enum {
-    MAX_NODES = 20,               // Maximum nodes in network
-    INFINITE_COST = 255,          // Represents unreachable
+    MAX_NODES = 30,               // Maximum nodes in network
+    INFINITE_COST = 0xFFFF,          // Represents unreachable
     INVALID_NODE = 0xFFFF         // Invalid node ID
 };
 

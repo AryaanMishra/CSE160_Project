@@ -13,4 +13,5 @@ interface NeighborDiscovery {
     // (e.g., getNeighbor(uint16_t id) or iterate APIs) instead.
     command uint32_t* getActiveNeighborKeys();
     command uint16_t getNumActiveNeighbors();
+    command uint16_t getCost(uint16_t id);
 }
