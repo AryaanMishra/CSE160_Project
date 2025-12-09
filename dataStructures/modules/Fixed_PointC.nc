@@ -16,19 +16,28 @@ generic module Fixed_PointC(){
 implementation{
     command uint16_t Fixed_Point.u_fixed_mult(uint16_t x, uint16_t y){
         uint32_t raw = (uint32_t) (x * y);
-        uint16_t rounded = raw + ROUND_BIT;
-        uint16_t fixed_res = (uint16_t)(raw >> FRACTIONAL_BITS);    
+        uint32_t rounded = raw + ROUND_BIT;
+        uint16_t fixed_res = (uint16_t)(rounded >> FRACTIONAL_BITS);    
         return fixed_res;
     }   
 
     command uint16_t Fixed_Point.u_fixed_div(uint16_t x, uint16_t y){
-        uint32_t dividend = (uint32_t)x << FRACTIONAL_BITS;
-        uint16_t fixed_res = (uint16_t)(dividend/y);
+        uint32_t dividend;
+        uint16_t fixed_res;
+        if(y == 0){
+            return x;
+        }
+        dividend = (uint32_t)x << FRACTIONAL_BITS;
+        fixed_res = (uint16_t)(dividend/y);
         return fixed_res;
     }
 
     command uint16_t Fixed_Point.fixed_to_uint16(uint16_t fixed){
         return fixed/SCALE_FACTOR;
+    }
+
+    command uint16_t Fixed_Point.uint16_to_fixed(uint16_t val){
+        return (uint16_t)(val * SCALE_FACTOR);
     }
 
     command uint16_t Fixed_Point.fixed_ewma_calc(uint16_t curr, uint16_t prev, uint16_t alpha){
