@@ -4,6 +4,7 @@
 generic configuration TransportC(){
     provides interface Transport;
     uses interface IP;
+    uses interface App;
 }
 implementation{
     components new TransportP();
@@ -25,6 +26,7 @@ implementation{
     TransportP.resend_queue -> resend_queue;
 
     TransportP.IP = IP;
+    TransportP.App = App;
 
     components new QueueC(new_conn_t, 20) as connectionQueue;
     TransportP.connectionQueue -> connectionQueue;
