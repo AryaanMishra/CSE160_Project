@@ -13,6 +13,7 @@ typedef struct active_t{
     uint8_t curr;
     uint8_t written;
     bool isActive;
+    char username[20]; // Add this line to store the user's name
 } active_t;
 
 #endif
