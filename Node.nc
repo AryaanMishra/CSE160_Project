@@ -41,11 +41,13 @@ module Node{
 
    uses interface Hashmap<bool> as currConnections;
 
-   uses interface Timer<TMilli> as server_connection_timer;
+   uses interface Timer<TMilli> as test_server_connection_timer;
 
-   uses interface Timer<TMilli> as client_write_timer;
+   uses interface Timer<TMilli> as test_client_write_timer;
 
 	uses interface Random;
+
+   uses interface App;
 }
 
 implementation{
@@ -120,10 +122,10 @@ implementation{
       addr.port = port;
       call Transport.bind(fd, &addr);
       call Transport.listen(fd);
-      call server_connection_timer.startPeriodic(80000 + (call Random.rand16()%300));
+      call test_server_connection_timer.startPeriodic(80000 + (call Random.rand16()%300));
    }
    
-   event void server_connection_timer.fired(){
+   event void test_server_connection_timer.fired(){
       socket_t newFd = call Transport.accept(fd);
       uint8_t i;
       uint8_t read_buff[SOCKET_BUFFER_SIZE];
@@ -210,9 +212,7 @@ implementation{
       dest_addr.port = destPort;
       
       fd = call Transport.socket();
-      dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET FD: %u\n", TOS_NODE_ID, fd);
       bindResult = call Transport.bind(fd, &src_addr);
-      dbg(TRANSPORT_CHANNEL, "NODE %u BIND RESULT: %u\n", TOS_NODE_ID, bindResult);
       if(bindResult == SUCCESS){
          sockets[fd].isActive = TRUE;
          sockets[fd].transfer = transfer;
@@ -225,12 +225,12 @@ implementation{
       call Transport.connect(fd, &dest_addr);
       dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
 
-      if(!call client_write_timer.isRunning()){
-         call client_write_timer.startPeriodic(10000 + (call Random.rand16()%300));
+      if(!call test_client_write_timer.isRunning()){
+         call test_client_write_timer.startPeriodic(10000 + (call Random.rand16()%300));
       }
    }
 
-   task void client_write(){
+   task void test_client_write(){
       uint8_t i;
       bool writing = FALSE;
       uint16_t total_bytes;
@@ -266,12 +266,12 @@ implementation{
       }
       
       if(writing == FALSE){
-         call client_write_timer.stop();
+         call test_client_write_timer.stop();
       }
    }
 
-   event void client_write_timer.fired(){
-      post client_write();
+   event void test_client_write_timer.fired(){
+      post test_client_write();
    }
 
 
@@ -290,8 +290,12 @@ implementation{
       
    }
 
-   event void CommandHandler.setAppServer(){}
+   event void CommandHandler.setAppServer(socket_port_t port){
+      call App.initialize_server(port);
+   }
 
-   event void CommandHandler.setAppClient(){}
+   event void CommandHandler.setAppClient(uint8_t* msg){
+      error_t status = call App.handle_command((char *)msg);
+   }
 
 }

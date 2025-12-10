@@ -12,6 +12,7 @@ generic module TransportP(){
     uses interface Timer<TMilli> as retransmit_timer;
     uses interface Queue<packet_send_t> as resend_queue;
     uses interface Timer<TMilli> as send_timer;
+    uses interface App;
 }
 implementation{
     socket_store_t sockets[MAX_NUM_OF_SOCKETS];
@@ -31,7 +32,7 @@ implementation{
         sockets[fd].lastRead = 0;
         sockets[fd].lastRcvd = 0;
         sockets[fd].nextExpected = 0;
-        sockets[fd].RTT = 10000;
+        sockets[fd].RTT = 50000;
         sockets[fd].effectiveWindow = SOCKET_BUFFER_SIZE;
     }
 
@@ -242,7 +243,7 @@ implementation{
                         }
                         if(wrap_checker(sockets[fd].lastAck, next_seq)){
                             call resend_queue.dequeue();
-                            // dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received removing package seq: %u\n", TOS_NODE_ID, sent.payload.seq);
+                            dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received removing package seq: %u\n", TOS_NODE_ID, sent.payload.seq);
                         } else {
                             break; 
                         }
@@ -262,7 +263,7 @@ implementation{
                 if(sockets[fd].state == SYN_RCVD){
                     dbg(TRANSPORT_CHANNEL, "NODE %u: ACK received, moving to ESTABLISHED\n", TOS_NODE_ID);
                     sockets[fd].state = ESTABLISHED;
-                    call send_timer.startPeriodic(300000 + (call Random.rand16()%300));
+                    call send_timer.startPeriodic(10000 + (call Random.rand16()%300));
                     return SUCCESS;        
                 }
                 else if(sockets[fd].state == FIN_WAIT){
@@ -327,6 +328,8 @@ implementation{
                     dbg(TRANSPORT_CHANNEL, "RECEIVED SYN+ACK: seq: %u, ack: %u\n", package->seq, package->ack);
                     dbg(TRANSPORT_CHANNEL, "SENDING ACK, Ack: %u\n", new_seq);
 
+                    call App.connect_done(fd);
+
                     if(!call send_timer.isRunning()){
                         call send_timer.startPeriodic(500000 + (call Random.rand16()%300));
                     }
@@ -363,13 +366,17 @@ implementation{
                     }
                 }
             }
+            else if(package->flags == SYN){
+                dbg(TRANSPORT_CHANNEL, "Resending SYN+ACK\n");
+                makePack(&p, SYN_ACK, package->seq+1, sockets[fd].lastAck, sockets[fd].dest.port, sockets[fd].src, sockets[fd].effectiveWindow, 0, &data[0]);
+            }
         } 
 
         else if(package->flags == SYN){
             new_conn_t conn;
             conn.payload = *package;
             conn.src = src_addr;
-
+            call App.accept_done();
             call connectionQueue.enqueue(conn);
             dbg(TRANSPORT_CHANNEL, "NODE %u received SYN from NODE %u PORT %u\n", TOS_NODE_ID, src_addr, package->srcPort);
             return SUCCESS;
@@ -531,13 +538,13 @@ implementation{
                 if(wrap_checker(sockets[sent.fd].lastAck, next_seq)){
                     // dbg(TRANSPORT_CHANNEL, "DISCARDING ACKED PACKET: Seq %u < Ack %u\n", next_seq, sockets[sent.fd].lastAck);
                 }
-                else if(sent.retransmitCount < 1000){
+                else if(sent.retransmitCount < 100){
                     call IP.buildIP(sockets[sent.fd].dest.addr, PROTOCOL_TCP, &sent.payload);
                     sent.retransmitCount++;
                     sent.timestamp = call retransmit_timer.getNow();
                     sent.timeout = sent.timestamp + (sockets[sent.fd].RTT * 2);
                     call resend_queue.enqueue(sent); 
-                    // dbg(TRANSPORT_CHANNEL, "RESENDING seq %u fd %u, count %u, flag: %u\n", sent.payload.seq, sent.fd, sent.retransmitCount, sent.payload.flags);
+                    dbg(TRANSPORT_CHANNEL, "RESENDING seq %u fd %u, count %u, flag: %u\n", sent.payload.seq, sent.fd, sent.retransmitCount, sent.payload.flags);
                     if(sockets[sent.fd].state == CLOSE_WAIT){
                         sockets[sent.fd].state = CLOSED;
                         dbg(TRANSPORT_CHANNEL, "NODE: %u MOVING TO CLOSED\n", TOS_NODE_ID);
@@ -553,6 +560,7 @@ implementation{
             packet_send_t next = call resend_queue.head();
             uint32_t time_until_timeout = next.timeout > now ? next.timeout - now : 1; 
             call retransmit_timer.startOneShot(time_until_timeout);
+            // call retransmit_timer.startOneShot(time_until_timeout * next.retransmitCount);
         }
     }
 

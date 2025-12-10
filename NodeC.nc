@@ -29,11 +29,11 @@ implementation {
     components new TimerMilliC() as steadyTimer;
     Node.steadyTimer -> steadyTimer;
 
-    components new TimerMilliC() as server_connection_timer;
-    Node.server_connection_timer -> server_connection_timer;
+    components new TimerMilliC() as test_server_connection_timer;
+    Node.test_server_connection_timer -> test_server_connection_timer;
 
-    components new TimerMilliC() as client_write_timer;
-    Node.client_write_timer -> client_write_timer;
+    components new TimerMilliC() as test_client_write_timer;
+    Node.test_client_write_timer -> test_client_write_timer;
 
     components new SimpleSendC(AM_PACK);
     Node.Sender -> SimpleSendC;
@@ -69,11 +69,18 @@ implementation {
     NeighborDiscovery.LinkLayer -> LinkLayerC;
     Flooding.LinkLayer -> LinkLayerC;
     Flooding.LinkState -> LinkState;
+    Flooding.ND -> NeighborDiscovery;
 
     IP.LinkLayer -> LinkLayerC;
     IP.LinkState -> LinkState;
     IP.Sender -> SimpleSendC;
     IP.Transport -> Transport;
+
+    components new AppC() as App;
+    Node.App -> App;
+    App.Transport -> Transport;
+    
+    Transport.App -> App;
 
     components new HashmapC(bool, 20) as currConnections;
     Node.currConnections -> currConnections;

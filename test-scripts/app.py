@@ -9,7 +9,7 @@ def main():
     s.runTime(1);
 
     # Load the the layout of the network.
-    s.loadTopo("long_line.topo");
+    s.loadTopo("tuna-melt.topo");
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt");
@@ -25,21 +25,12 @@ def main():
 
     # After sending a ping, simulate a little to prevent collision.
 
-    s.runTime(1000);
-    s.testServer(1, 100);
     s.runTime(500);
-
-    s.testClient(4, 1, 20, 100, 300);
-    s.runTime(500);
-
-    s.testClient(8, 1, 20, 100, 400);
-    s.runTime(4000);
-
-    s.clientClose(4, 1, 20, 100);
+    s.appServer(1, 41);
     s.runTime(200);
 
-    s.clientClose(8, 1, 20, 100);
-    s.runTime(1000);
+    s.appClient(3, "hello acerpa 3\r\n");
+    s.runTime(500);
 
 
 

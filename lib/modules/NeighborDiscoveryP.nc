@@ -44,7 +44,7 @@ implementation {
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
         call neighborTimer.startPeriodic(10000+ (call Random.rand16() % 300));
-        call updateTimer.startPeriodic(10000+ (call Random.rand16() % 300));
+        call updateTimer.startPeriodic(50000+ (call Random.rand16() % 300));
     }
 
 

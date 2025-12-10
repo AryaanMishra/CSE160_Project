@@ -5,6 +5,7 @@ generic configuration FloodingC(){
     provides interface Flooding;
     uses interface LinkLayer;
     uses interface LinkState;
+    uses interface NeighborDiscovery as ND;
 }
 
 implementation{
@@ -23,5 +24,6 @@ implementation{
 
     FloodingP.LinkLayer = LinkLayer;
     FloodingP.LinkState = LinkState;
+    FloodingP.ND = ND;
 
 }
