@@ -8,12 +8,13 @@ enum{
 };
 
 typedef struct active_t{
-    //might want to increase the buff size later
     uint8_t send_buff[BUFF_SIZE];
-    uint8_t curr;
-    uint8_t written;
+    uint8_t recv_buff[BUFF_SIZE];  // Buffer for incoming data
+    uint16_t curr;
+    uint16_t written;
+    uint16_t recv_len;  // Current length of received data
     bool isActive;
-    char username[20]; // Add this line to store the user's name
+    char username[20];
 } active_t;
 
 #endif
