@@ -32,6 +32,9 @@ def main():
     s.appClient(3, "hello acerpa 3\r\n");
     s.runTime(500);
 
+    s.appClient(3, "msg Hello World!!!\r\n");
+    s.runTime(500);
+
 
 
 

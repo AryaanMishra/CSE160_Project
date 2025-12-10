@@ -296,6 +296,9 @@ implementation{
 
    event void CommandHandler.setAppClient(uint8_t* msg){
       error_t status = call App.handle_command((char *)msg);
+      if(status == SUCCESS){
+         dbg(TRANSPORT_CHANNEL, "Successfully initiated\n");
+      }
    }
 
 }

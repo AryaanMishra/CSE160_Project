@@ -45,11 +45,11 @@ implementation{
         socket_t newFd = call Transport.accept(global_fd);
         if(newFd != NULL_SOCKET){
             sockets[newFd].isActive = TRUE;
-            dbg(TRANSPORT_CHANNEL, "Accepting Things");
             if(!(call read_write.isRunning())){
                 call read_write.startPeriodic(30000);
             }
             call read_write.startPeriodic(30000);
+            return SUCCESS;
         }
         else {
             return FAIL;
@@ -57,7 +57,11 @@ implementation{
     }
 
     command error_t App.connect_done(socket_t fd){
-        return FAIL;
+        if(!(call read_write.isRunning())){
+            call read_write.startPeriodic(30000);
+        }
+        call read_write.startPeriodic(30000);
+        return SUCCESS;
     }
 
     error_t hello_cmd(char* msg){
@@ -65,15 +69,14 @@ implementation{
         socket_addr_t dest_addr;
         error_t bindResult;
         char extract[32] = {0};
-        uint8_t len;
+        uint16_t len;
         size_t remaining_size;
 
         extract_word(msg, extract, 3); //extracts port
-        dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[2]);
 
         src_addr.addr = TOS_NODE_ID;
-        src_addr.port = *(socket_port_t *)extract[2];
-
+        src_addr.port = (socket_port_t)atoi(extract);
+        dbg(TRANSPORT_CHANNEL, "Extract: %u\n", src_addr.port);
         dest_addr.addr = 1;
         dest_addr.port = 41;
         
@@ -93,16 +96,30 @@ implementation{
         memset(extract, 0, sizeof(extract));
         extract_word(msg, extract, 2);
 
-        if(BUFF_SIZE - sockets[global_fd].curr > sizeof(extract) -1 ){
+        if(BUFF_SIZE - sockets[global_fd].curr < sizeof(extract) -1 ){
             return FAIL;
         }
-        remaining_size = BUFF_SIZE - sockets[global_fd].written;
-        len = snprintf(&sockets[global_fd].send_buff[sockets[global_fd].written], 
+        remaining_size = BUFF_SIZE - sockets[global_fd].curr;
+        len = snprintf((char *)&sockets[global_fd].send_buff[sockets[global_fd].written], 
             remaining_size, "Hello %s", extract);
-
-        sockets[global_fd].written += len + 1;
+        dbg(TRANSPORT_CHANNEL, "len: %u\n", len);
+        sockets[global_fd].curr += len + 1;
 
         return SUCCESS;    
+    }
+
+    error_t build_buff(char* msg, socket_t fd){
+        size_t remaining_size = BUFF_SIZE - sockets[global_fd].written;
+        uint8_t len;
+        if(remaining_size < sizeof(msg)){
+            return FAIL;
+        }
+        else{
+            len = snprintf((char *)&sockets[fd].send_buff[sockets[global_fd].written], remaining_size, "%s", msg);
+            dbg(TRANSPORT_CHANNEL, "len: %u\n", len);
+            sockets[global_fd].curr += len + 1;
+        }
+        return SUCCESS;
     }
 
     command void App.initialize_server(socket_port_t port){
@@ -116,19 +133,36 @@ implementation{
     }
 
     command error_t App.handle_command(char* msg){
-        char extract [32] = {0};
+        char extract [32];
         error_t status;
 
-        extract_word(msg, extract, 1); //command type
-        dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[0]);
+        memset(extract, 0, sizeof(extract));
 
-        if(strcmp(extract, "hello") == 0){
+        extract_word(msg, extract, 1); //command type
+
+        if(strcmp(extract, "hello\0") == 0){ //hello command requires additional steps compared to other commands
             status = hello_cmd(msg);
         }
-        return FAIL;
+        else if(strcmp(extract, "msg") == 0){
+            socket_t fd = call Transport.findFD(41, 1);
+            status = build_buff(msg, fd);
+        }
+        return status;
     }
 
     event void read_write.fired(){
-        
+        uint8_t len;
+        uint8_t i;
+        //this will work for now, but is bad practice. Need to better handle buffer size
+        for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
+            if(sockets[i].isActive){
+                uint16_t send_size = sockets[i].curr - sockets[i].written;
+                dbg(TRANSPORT_CHANNEL, "Send size: %u\n", send_size);
+                if(send_size != 0){
+                    len = call Transport.write(i, &sockets[i].send_buff[sockets[i].written], send_size);
+                    sockets[i].written += len;
+                }
+            }
+        }
     }
 }
