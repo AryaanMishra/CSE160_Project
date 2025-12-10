@@ -1,4 +1,8 @@
 #include "../../includes/socket.h"
+#include "../../includes/app_structs.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 generic module AppP(){
     provides interface App;
@@ -42,16 +46,121 @@ implementation{
 
     command error_t App.accept_done(){
         socket_t newFd = call Transport.accept(global_fd);
-        sockets[newFd].isActive = TRUE;
-        dbg(TRANSPORT_CHANNEL, "Accepting Things");
-        if(!(call read_write.isRunning())){
-            call read_write.startPeriodic(30000);
+        if(newFd != NULL_SOCKET){
+            sockets[newFd].isActive = TRUE;
+            sockets[newFd].written = 0;
+            sockets[newFd].curr = 0;
+            dbg(TRANSPORT_CHANNEL, "Accepting Connection, Socket %d Active\n", newFd);
+            if(!(call read_write.isRunning())){
+                call read_write.startPeriodic(500); // Faster period for better responsiveness
+            }
         }
-        return FAIL;
+        else {
+            return FAIL;
+        }
+        return SUCCESS;
     }
 
     command error_t App.connect_done(socket_t fd){
-        return FAIL;
+        dbg(TRANSPORT_CHANNEL, "Connect Done called for socket %d\n", fd);
+        if(!(call read_write.isRunning())){
+            call read_write.startPeriodic(500);
+        }
+        return SUCCESS;
+    }
+
+    error_t hello_cmd(char* msg){
+        socket_addr_t src_addr;
+        socket_addr_t dest_addr;
+        error_t bindResult;
+        char extract[32] = {0};
+        uint8_t len;
+        size_t remaining_size;
+
+        extract_word(msg, extract, 3); //extracts port
+        
+        src_addr.port = atoi(extract); 
+        src_addr.addr = TOS_NODE_ID;
+
+        dest_addr.addr = 1;
+        dest_addr.port = 41;
+        
+        global_fd = call Transport.socket();
+        bindResult = call Transport.bind(global_fd, &src_addr);
+        if(bindResult == SUCCESS){
+            sockets[global_fd].isActive = TRUE;
+            sockets[global_fd].written = 0;
+            sockets[global_fd].curr = 0;               
+            dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
+        }
+
+        call Transport.connect(global_fd, &dest_addr);
+        dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
+
+        memset(extract, 0, sizeof(extract));
+        extract_word(msg, extract, 2); // extracts username
+
+        if(BUFF_SIZE - sockets[global_fd].curr > sizeof(extract) -1 ){
+            return FAIL;
+        }
+        remaining_size = BUFF_SIZE - sockets[global_fd].written;
+        
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].written], 
+            remaining_size, "hello %s\r\n", extract);
+
+        sockets[global_fd].written += len; 
+
+        return SUCCESS;    
+    }
+
+    error_t msg_cmd(char* msg){
+        char extract[BUFF_SIZE] = {0};
+        uint8_t len;
+        size_t remaining_size;
+        
+        // Format: msg [message]
+        //  extract everything after "msg "
+        char cmd[10];
+        sscanf(msg, "%s %[^\r\n]", cmd, extract);
+
+        remaining_size = BUFF_SIZE - sockets[global_fd].written;
+        
+        // Protocol: msg [message]\r\n
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].written], 
+            remaining_size, "msg %s\r\n", extract);
+
+        sockets[global_fd].written += len;
+        return SUCCESS;
+    }
+
+    error_t whisper_cmd(char* msg){
+        char user[20];
+        char content[BUFF_SIZE];
+        uint8_t len;
+        size_t remaining_size;
+
+        // Format: whisper [username] [message]
+        char cmd[10];
+        sscanf(msg, "%s %s %[^\r\n]", cmd, user, content);
+
+        remaining_size = BUFF_SIZE - sockets[global_fd].written;
+        
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].written], 
+            remaining_size, "whisper %s %s\r\n", user, content);
+
+        sockets[global_fd].written += len;
+        return SUCCESS;
+    }
+
+    error_t listusr_cmd(){
+        uint8_t len;
+        size_t remaining_size = BUFF_SIZE - sockets[global_fd].written;
+        
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].written], 
+            remaining_size, "listusr\r\n");
+
+        sockets[global_fd].written += len;
+        return SUCCESS;
     }
 
     command void App.initialize_server(socket_port_t port){
@@ -62,42 +171,141 @@ implementation{
         addr.port = port;
         call Transport.bind(global_fd, &addr);
         call Transport.listen(global_fd);
+        
+        sockets[global_fd].isActive = TRUE; 
+        call read_write.startPeriodic(500);
     }
 
     command error_t App.handle_command(char* msg){
-        char extract [3][32] = {{0}};
-        socket_addr_t src_addr;
-        socket_addr_t dest_addr;
-        error_t bindResult;
+        char extract [32] = {0};
+        
+        extract_word(msg, extract, 1); //command type
+        dbg(TRANSPORT_CHANNEL, "App Handle Command: %s\n", extract);
 
-        extract_word(&msg[0], extract[0], 1); //command type
-        dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[0]);
-
-        if(strcmp(extract[0], "hello") == 0){
-            extract_word(&msg[0], extract[2], 3); //extracts port
-            dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[2]);
-
-            src_addr.addr = TOS_NODE_ID;
-            src_addr.port = *(socket_port_t *)extract[2];
-
-            dest_addr.addr = 1;
-            dest_addr.port = 41;
-            
-            global_fd = call Transport.socket();
-            bindResult = call Transport.bind(global_fd, &src_addr);
-            if(bindResult == SUCCESS){
-                //create a structure to handle commands
-                sockets[global_fd].isActive = TRUE;
-                dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
-            }
-
-            call Transport.connect(global_fd, &dest_addr);
-            dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);     
+        if(strcmp(extract, "hello") == 0){
+            return hello_cmd(msg);
+        } else if (strcmp(extract, "msg") == 0){
+            return msg_cmd(msg);
+        } else if (strcmp(extract, "whisper") == 0){
+            return whisper_cmd(msg);
+        } else if (strcmp(extract, "listusr") == 0){
+            return listusr_cmd();
         }
         return FAIL;
     }
 
-    event void read_write.fired(){
+    void broadcast(socket_t source_fd, char* message) {
+        int i;
+        uint16_t len = strlen(message);
+        for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
+            if (sockets[i].isActive && i != source_fd && i != global_fd) {
+                uint16_t remaining = BUFF_SIZE - sockets[i].curr;
+                if (remaining > len) {
+                    memcpy(&sockets[i].send_buff[sockets[i].curr], message, len);
+                    sockets[i].curr += len;
+                }
+            }
+        }
+    }
+
+    void server_parse_input(socket_t fd, char* input) {
+        char cmd[10];
+        char rest[BUFF_SIZE];
+        char output[BUFF_SIZE];
         
+        memset(cmd, 0, 10);
+        memset(rest, 0, BUFF_SIZE);
+        memset(output, 0, BUFF_SIZE);
+        
+        sscanf(input, "%s %[^\t\n]", cmd, rest); 
+
+        dbg(TRANSPORT_CHANNEL, "Server received from %d: %s\n", fd, input);
+
+        if (strcmp(cmd, "Hello") == 0 || strcmp(cmd, "hello") == 0) {
+            strcpy(sockets[fd].username, rest);
+            dbg(TRANSPORT_CHANNEL, "User registered: %s on socket %d\n", sockets[fd].username, fd);
+        } 
+        else if (strcmp(cmd, "msg") == 0) {
+            sprintf(output, "%s: %s\r\n", sockets[fd].username, rest);
+            broadcast(fd, output);
+        }
+        else if (strcmp(cmd, "listusr") == 0) {
+            int i;
+            strcpy(output, "listUsrRply ");
+            for(i=0; i<MAX_NUM_OF_SOCKETS; i++){
+                if(sockets[i].isActive && strlen(sockets[i].username) > 0){
+                    strcat(output, sockets[i].username);
+                    strcat(output, ", ");
+                }
+            }
+            strcat(output, "\r\n");
+            
+            if (BUFF_SIZE - sockets[fd].curr > strlen(output)) {
+                strcpy((char*)&sockets[fd].send_buff[sockets[fd].curr], output);
+                sockets[fd].curr += strlen(output);
+            }
+        }
+        else if (strcmp(cmd, "whisper") == 0) {
+            char targetUser[20];
+            char msgContent[BUFF_SIZE];
+            int i;
+            bool found = FALSE;
+
+            sscanf(rest, "%s %[^\t\n]", targetUser, msgContent);
+
+            for(i = 0; i < MAX_NUM_OF_SOCKETS; i++){
+                if(sockets[i].isActive && strcmp(sockets[i].username, targetUser) == 0){
+                    sprintf(output, "%s whispers: %s\r\n", sockets[fd].username, msgContent);
+                    
+                    if (BUFF_SIZE - sockets[i].curr > strlen(output)) {
+                        memcpy(&sockets[i].send_buff[sockets[i].curr], output, strlen(output));
+                        sockets[i].curr += strlen(output);
+                    }
+                    found = TRUE;
+                    break;
+                }
+            }
+            if(!found){
+                dbg(TRANSPORT_CHANNEL, "Whisper failed: User %s not found.\n", targetUser);
+            }
+        }
+    }
+
+    event void read_write.fired(){
+        int i;
+        uint8_t read_buff[BUFF_SIZE];
+        uint16_t bytes_read, bytes_written;
+
+        for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
+            if (sockets[i].isActive) {
+                
+                // READ
+                bytes_read = call Transport.read(i, read_buff, BUFF_SIZE - 1);
+                if (bytes_read > 0) {
+                    read_buff[bytes_read] = '\0'; 
+            
+                    if (TOS_NODE_ID == 1) {
+                        server_parse_input(i, (char*)read_buff);
+                    } else {
+                        dbg(TRANSPORT_CHANNEL, "Client Received: %s\n", read_buff);
+                    }
+                }
+
+                // WRITE
+                if (sockets[i].written < sockets[i].curr) {
+                    uint16_t to_write = sockets[i].curr - sockets[i].written;
+                    bytes_written = call Transport.write(i, &sockets[i].send_buff[sockets[i].written], to_write);
+                    
+                    if (bytes_written > 0) {
+                        sockets[i].written += bytes_written;
+                    }
+
+                    if (sockets[i].written == sockets[i].curr) {
+                        sockets[i].written = 0;
+                        sockets[i].curr = 0;
+                    }
+                }
+            }
+        }
     }
 }
