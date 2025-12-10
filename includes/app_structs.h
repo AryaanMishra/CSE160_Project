@@ -3,11 +3,15 @@
 
 #include "socket.h"
 
+enum{
+    BUFF_SIZE = 1028
+};
+
 typedef struct active_t{
     //might want to increase the buff size later
-    uint8_t send_buff[SOCKET_BUFFER_SIZE];
+    uint8_t send_buff[BUFF_SIZE];
     uint8_t curr;
-    uint8_t last_written;
+    uint8_t written;
     bool isActive;
 } active_t;
 

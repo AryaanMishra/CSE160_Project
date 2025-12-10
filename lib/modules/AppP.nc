@@ -1,4 +1,5 @@
 #include "../../includes/socket.h"
+#include "../../includes/app_structs.h"
 
 generic module AppP(){
     provides interface App;
@@ -42,16 +43,66 @@ implementation{
 
     command error_t App.accept_done(){
         socket_t newFd = call Transport.accept(global_fd);
-        sockets[newFd].isActive = TRUE;
-        dbg(TRANSPORT_CHANNEL, "Accepting Things");
-        if(!(call read_write.isRunning())){
+        if(newFd != NULL_SOCKET){
+            sockets[newFd].isActive = TRUE;
+            dbg(TRANSPORT_CHANNEL, "Accepting Things");
+            if(!(call read_write.isRunning())){
+                call read_write.startPeriodic(30000);
+            }
             call read_write.startPeriodic(30000);
         }
-        return FAIL;
+        else {
+            return FAIL;
+        }
     }
 
     command error_t App.connect_done(socket_t fd){
         return FAIL;
+    }
+
+    error_t hello_cmd(char* msg){
+        socket_addr_t src_addr;
+        socket_addr_t dest_addr;
+        error_t bindResult;
+        char extract[32] = {0};
+        uint8_t len;
+        size_t remaining_size;
+
+        extract_word(msg, extract, 3); //extracts port
+        dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[2]);
+
+        src_addr.addr = TOS_NODE_ID;
+        src_addr.port = *(socket_port_t *)extract[2];
+
+        dest_addr.addr = 1;
+        dest_addr.port = 41;
+        
+        global_fd = call Transport.socket();
+        bindResult = call Transport.bind(global_fd, &src_addr);
+        if(bindResult == SUCCESS){
+            //create a structure to handle commands
+            sockets[global_fd].isActive = TRUE;
+            sockets[global_fd].written = 0;
+            sockets[global_fd].curr = 0;               
+            dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
+        }
+
+        call Transport.connect(global_fd, &dest_addr);
+        dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);
+
+        memset(extract, 0, sizeof(extract));
+        extract_word(msg, extract, 2);
+
+        if(BUFF_SIZE - sockets[global_fd].curr > sizeof(extract) -1 ){
+            return FAIL;
+        }
+        remaining_size = BUFF_SIZE - sockets[global_fd].written;
+        len = snprintf(&sockets[global_fd].send_buff[sockets[global_fd].written], 
+            remaining_size, "Hello %s", extract);
+
+        sockets[global_fd].written += len + 1;
+
+        return SUCCESS;    
     }
 
     command void App.initialize_server(socket_port_t port){
@@ -65,34 +116,14 @@ implementation{
     }
 
     command error_t App.handle_command(char* msg){
-        char extract [3][32] = {{0}};
-        socket_addr_t src_addr;
-        socket_addr_t dest_addr;
-        error_t bindResult;
+        char extract [32] = {0};
+        error_t status;
 
-        extract_word(&msg[0], extract[0], 1); //command type
+        extract_word(msg, extract, 1); //command type
         dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[0]);
 
-        if(strcmp(extract[0], "hello") == 0){
-            extract_word(&msg[0], extract[2], 3); //extracts port
-            dbg(TRANSPORT_CHANNEL, "Extract: %s\n", extract[2]);
-
-            src_addr.addr = TOS_NODE_ID;
-            src_addr.port = *(socket_port_t *)extract[2];
-
-            dest_addr.addr = 1;
-            dest_addr.port = 41;
-            
-            global_fd = call Transport.socket();
-            bindResult = call Transport.bind(global_fd, &src_addr);
-            if(bindResult == SUCCESS){
-                //create a structure to handle commands
-                sockets[global_fd].isActive = TRUE;
-                dbg(TRANSPORT_CHANNEL, "NODE %u SOCKET INITIALIZED, IS ACTIVE TRUE\n", TOS_NODE_ID);
-            }
-
-            call Transport.connect(global_fd, &dest_addr);
-            dbg(TRANSPORT_CHANNEL, "NODE %u CONNECT CALLED\n", TOS_NODE_ID);     
+        if(strcmp(extract, "hello") == 0){
+            status = hello_cmd(msg);
         }
         return FAIL;
     }
