@@ -50,6 +50,8 @@ implementation{
             sockets[newFd].isActive = TRUE;
             sockets[newFd].written = 0;
             sockets[newFd].curr = 0;
+            sockets[newFd].recv_len = 0;
+            memset(sockets[newFd].recv_buff, 0, BUFF_SIZE);
             dbg(TRANSPORT_CHANNEL, "Accepting Connection, Socket %d Active\n", newFd);
             if(!(call read_write.isRunning())){
                 call read_write.startPeriodic(500); // Faster period for better responsiveness
@@ -65,6 +67,9 @@ implementation{
     }
 
     command error_t App.connect_done(socket_t fd){
+        dbg(TRANSPORT_CHANNEL, "Connect Done called for socket %d\n", fd);
+        sockets[fd].recv_len = 0;
+        memset(sockets[fd].recv_buff, 0, BUFF_SIZE);
         if(!(call read_write.isRunning())){
             call read_write.startPeriodic(30000);
         }
@@ -104,14 +109,15 @@ implementation{
         memset(extract, 0, sizeof(extract));
         extract_word(msg, extract, 2);
 
-        if(BUFF_SIZE - sockets[global_fd].curr < sizeof(extract) -1 ){
+        remaining_size = BUFF_SIZE - sockets[global_fd].curr;
+        if(remaining_size < sizeof(extract) + 10){
             return FAIL;
         }
-        remaining_size = BUFF_SIZE - sockets[global_fd].curr;
-        len = snprintf((char *)&sockets[global_fd].send_buff[sockets[global_fd].written], 
-            remaining_size, "Hello %s", extract);
-        dbg(TRANSPORT_CHANNEL, "len: %u\n", len);
-        sockets[global_fd].curr += len + 1;
+        
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].curr], 
+            remaining_size, "hello %s\r\n", extract);
+
+        sockets[global_fd].curr += len; 
 
         return SUCCESS;    
     }
@@ -119,14 +125,50 @@ implementation{
     error_t build_buff(char* msg, socket_t fd){
         size_t remaining_size = BUFF_SIZE - sockets[global_fd].written;
         uint8_t len;
-        if(remaining_size < sizeof(msg)){
-            return FAIL;
-        }
-        else{
-            len = snprintf((char *)&sockets[fd].send_buff[sockets[global_fd].written], remaining_size, "%s", msg);
-            dbg(TRANSPORT_CHANNEL, "len: %u\n", len);
-            sockets[global_fd].curr += len + 1;
-        }
+        size_t remaining_size;
+        
+        // Format: msg [message]
+        //  extract everything after "msg "
+        char cmd[10];
+        sscanf(msg, "%s %[^\r\n]", cmd, extract);
+
+        remaining_size = BUFF_SIZE - sockets[global_fd].curr;
+        
+        // Protocol: msg [message]\r\n
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].curr], 
+            remaining_size, "msg %s\r\n", extract);
+
+        sockets[global_fd].curr += len;
+        return SUCCESS;
+    }
+
+    error_t whisper_cmd(char* msg){
+        char user[20];
+        char content[BUFF_SIZE];
+        uint8_t len;
+        size_t remaining_size;
+
+        // Format: whisper [username] [message]
+        char cmd[10];
+        sscanf(msg, "%s %s %[^\r\n]", cmd, user, content);
+
+        remaining_size = BUFF_SIZE - sockets[global_fd].curr;
+        
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].curr], 
+            remaining_size, "whisper %s %s\r\n", user, content);
+
+        sockets[global_fd].curr += len;
+        return SUCCESS;
+    }
+
+    error_t listusr_cmd(){
+        uint8_t len;
+        size_t remaining_size = BUFF_SIZE - sockets[global_fd].curr;
+        
+        len = snprintf((char*)&sockets[global_fd].send_buff[sockets[global_fd].curr], 
+            remaining_size, "listusr\r\n");
+
+        sockets[global_fd].curr += len;
         return SUCCESS;
     }
 
@@ -179,10 +221,21 @@ implementation{
         char cmd[10];
         char rest[BUFF_SIZE];
         char output[BUFF_SIZE];
+        char* ptr;
         
         memset(cmd, 0, 10);
         memset(rest, 0, BUFF_SIZE);
         memset(output, 0, BUFF_SIZE);
+        
+        // Strip \r\n from input
+        ptr = input;
+        while (*ptr) {
+            if (*ptr == '\r' || *ptr == '\n') {
+                *ptr = '\0';
+                break;
+            }
+            ptr++;
+        }
         
         sscanf(input, "%s %[^\t\n]", cmd, rest); 
 
@@ -238,23 +291,60 @@ implementation{
         }
     }
 
+    // Check if buffer contains a complete message (ends with \r\n or \n)
+    char* find_message_end(char* buf, uint16_t len) {
+        uint16_t j;
+        for (j = 0; j < len; j++) {
+            if (buf[j] == '\n') {
+                return &buf[j];
+            }
+        }
+        return NULL;
+    }
+
     event void read_write.fired(){
         int i;
         uint8_t read_buff[BUFF_SIZE];
         uint16_t bytes_read, bytes_written;
+        char* msg_end;
+        char complete_msg[BUFF_SIZE];
+        uint16_t msg_len;
 
         for (i = 0; i < MAX_NUM_OF_SOCKETS; i++) {
             if (sockets[i].isActive) {
                 
-                // READ
-                bytes_read = call Transport.read(i, read_buff, BUFF_SIZE - 1);
+                // READ - accumulate data in recv_buff
+                bytes_read = call Transport.read(i, read_buff, BUFF_SIZE - sockets[i].recv_len - 1);
                 if (bytes_read > 0) {
-                    read_buff[bytes_read] = '\0'; 
-            
-                    if (TOS_NODE_ID == 1) {
-                        server_parse_input(i, (char*)read_buff);
-                    } else {
-                        dbg(TRANSPORT_CHANNEL, "Client Received: %s\n", read_buff);
+                    // Append to receive buffer
+                    memcpy(&sockets[i].recv_buff[sockets[i].recv_len], read_buff, bytes_read);
+                    sockets[i].recv_len += bytes_read;
+                    sockets[i].recv_buff[sockets[i].recv_len] = '\0';
+                    
+                    // Process all complete messages in buffer
+                    while ((msg_end = find_message_end((char*)sockets[i].recv_buff, sockets[i].recv_len)) != NULL) {
+                        msg_len = (msg_end - (char*)sockets[i].recv_buff) + 1;
+                        
+                        // Copy complete message
+                        memcpy(complete_msg, sockets[i].recv_buff, msg_len);
+                        complete_msg[msg_len] = '\0';
+                        
+                        // Remove processed message from buffer
+                        memmove(sockets[i].recv_buff, &sockets[i].recv_buff[msg_len], sockets[i].recv_len - msg_len + 1);
+                        sockets[i].recv_len -= msg_len;
+                        
+                        // Process the complete message
+                        if (TOS_NODE_ID == 1) {
+                            server_parse_input(i, complete_msg);
+                        } else {
+                            // Strip \r\n for display
+                            char* ptr = complete_msg;
+                            while (*ptr) {
+                                if (*ptr == '\r' || *ptr == '\n') { *ptr = '\0'; break; }
+                                ptr++;
+                            }
+                            dbg(TRANSPORT_CHANNEL, "Client Received: %s\n", complete_msg);
+                        }
                     }
                 }
 

@@ -43,6 +43,7 @@ implementation {
 
     components new FloodingC() as Flooding;
     Node.Flooding -> Flooding;
+    Flooding.Sender -> SimpleSendC;
 
     components new ipC() as IP;
     Node.IP -> IP;
