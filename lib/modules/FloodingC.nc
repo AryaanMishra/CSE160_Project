@@ -6,18 +6,15 @@ generic configuration FloodingC(){
     uses interface LinkLayer;
     uses interface LinkState;
     uses interface NeighborDiscovery as ND;
+    uses interface SimpleSend as Sender;
 }
 
 implementation{
     components new FloodingP();
     Flooding = FloodingP.Flooding;
 
-    components new SimpleSendC(AM_PACK);
-    FloodingP.Sender -> SimpleSendC;
-
     components RandomC as Random;
     FloodingP.Random -> Random;
-
     
     components new HashmapC(uint16_t, 20);
     FloodingP.Hashmap -> HashmapC;
@@ -25,5 +22,6 @@ implementation{
     FloodingP.LinkLayer = LinkLayer;
     FloodingP.LinkState = LinkState;
     FloodingP.ND = ND;
+    FloodingP.Sender = Sender;
 
 }
