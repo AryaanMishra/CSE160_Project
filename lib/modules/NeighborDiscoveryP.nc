@@ -30,7 +30,7 @@ implementation {
     bool isSteady = FALSE;
     const uint16_t alpha = 76; //This corresponds to 0.3, have to hard code as we don't use floats
     const uint16_t fixed_1 = 256; //1
-    const uint16_t thresh = 128; //30
+    const uint16_t thresh = 128; //50
     void updateActive();
 
 
@@ -43,7 +43,7 @@ implementation {
 
 // Calls neighbor discovery on a timer
     command void NeighborDiscovery.findNeighbors(){
-        call neighborTimer.startPeriodic(10000+ (call Random.rand16() % 300));
+        call neighborTimer.startPeriodic(20000+ (call Random.rand16() % 300));
         call updateTimer.startPeriodic(50000+ (call Random.rand16() % 300));
     }
 

@@ -40,6 +40,7 @@ implementation {
 
     components new NeighborDiscoveryC(AM_PACK) as NeighborDiscovery;
     Node.Neighbor -> NeighborDiscovery;
+    NeighborDiscovery.Sender -> SimpleSendC;
 
     components new FloodingC() as Flooding;
     Node.Flooding -> Flooding;

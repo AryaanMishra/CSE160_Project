@@ -42,6 +42,7 @@ class TestSim:
     def __init__(self):
         self.t = Tossim([])
         self.r = self.t.radio()
+        self.t.randomSeed(100);
 
         #Create a Command Packet
         self.msg = CommandMsg()

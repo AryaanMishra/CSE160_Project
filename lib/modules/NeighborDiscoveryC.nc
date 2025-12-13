@@ -5,6 +5,7 @@ generic configuration NeighborDiscoveryC(int channel){
     provides interface NeighborDiscovery;
     uses interface LinkLayer;
     uses interface LinkState;
+    uses interface SimpleSend as Sender;
 }
 
 implementation{
@@ -20,8 +21,7 @@ implementation{
     components RandomC as Random;
     NeighborDiscoveryP.Random -> Random;    
 
-    components new SimpleSendC(AM_PACK);
-    NeighborDiscoveryP.Sender -> SimpleSendC;
+    NeighborDiscoveryP.Sender = Sender;
 
     components new HashmapC(table, 20);
     NeighborDiscoveryP.Hashmap -> HashmapC;

@@ -8,7 +8,7 @@ def main():
     s.runTime(1);
 
     # Load the the layout of the network.
-    s.loadTopo("long_line.topo");  # Use a simple topology for testing
+    s.loadTopo("tuna-melt.topo");  # Use a simple topology for testing
 
     # Add a noise model to all of the motes.
     s.loadNoise("meyer-heavy.txt");
@@ -19,11 +19,11 @@ def main():
     # Add the main channels for debugging
     s.addChannel(s.COMMAND_CHANNEL);
     s.addChannel(s.GENERAL_CHANNEL);
-    s.addChannel(s.TRANSPORT_CHANNEL);
+    # s.addChannel(s.TRANSPORT_CHANNEL);
 
     # Let the network stabilize (neighbor discovery, routing)
     print("\n===== NETWORK BOOT & STABILIZATION =====")
-    s.runTime(500);
+    s.runTime(1000);
 
     # ============================================
     # Start the chat server on Node 1, Port 41
@@ -80,6 +80,18 @@ def main():
     print("\n===== bob sends broadcast message =====")
     s.appClient(3, "msg Hi from Bob!\r\n");
     s.runTime(1000);
+
+    print("\nAlice Client Close\n")
+    s.clientClose(2, 1, 5, 41);
+    s.runTime(1000)
+
+    print("\nBob Client Close\n")
+    s.clientClose(3, 1, 6, 41);
+    s.runTime(1000)
+
+    print("\nJim Client Close\n")
+    s.clientClose(4, 1, 6, 41);
+    s.runTime(1000)
 
 
 if __name__ == '__main__':

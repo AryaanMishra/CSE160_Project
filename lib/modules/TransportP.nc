@@ -275,7 +275,7 @@ implementation{
                 }
                 else if(sockets[fd].state == LAST_ACK){
                     sockets[fd].state = CLOSED;
-                    dbg(TRANSPORT_CHANNEL, "NODE: %u MOVING TO CLOSED\n", TOS_NODE_ID);
+                    dbg(GENERAL_CHANNEL, "NODE: %u MOVING TO CLOSED\n", TOS_NODE_ID);
                     return SUCCESS;
                 }
                 else{
@@ -495,7 +495,7 @@ implementation{
         for(i = 0; i< MAX_NUM_OF_SOCKETS; i++){
             if(sockets[i].state == TIME_WAIT){
                 sockets[i].state = CLOSED;
-                dbg(TRANSPORT_CHANNEL, "NODE: %u PORT: %u MOVING TO CLOSED\n", TOS_NODE_ID, sockets[i].src);
+                dbg(GENERAL_CHANNEL, "NODE: %u PORT: %u MOVING TO CLOSED\n", TOS_NODE_ID, sockets[i].src);
                 clear_socket(i);
             }
         }
